@@ -1,0 +1,371 @@
+"""Base LSP client for communication with language servers.
+
+This module provides the core LSP client functionality for starting,
+managing, and communicating with language servers via JSON-RPC.
+"""
+
+import asyncio
+import json
+from pathlib import Path
+from typing import Optional, Dict, Any, List
+from asyncio.subprocess import Process
+
+from ..utils.logging import get_logger
+from ..models.lsp import (
+    Position, Range, Location, TextDocumentIdentifier,
+    TextDocumentPositionParams, SymbolInformation, ReferenceParams
+)
+
+
+logger = get_logger(__name__)
+
+
+class LSPClient:
+    """Base Language Server Protocol client.
+
+    Handles JSON-RPC communication with language servers over stdio.
+
+    Attributes:
+        command: Command to start the language server
+        args: Arguments for the language server command
+        workspace_path: Path to workspace root
+        process: Subprocess running the language server
+        request_id: Counter for JSON-RPC request IDs
+        pending_requests: Map of request ID to Future for responses
+
+    Example:
+        >>> client = LSPClient(
+        ...     command="kotlin-language-server",
+        ...     workspace_path=Path("/project")
+        ... )
+        >>> await client.start()
+        >>> symbols = await client.workspace_symbols("Repository")
+        >>> await client.stop()
+    """
+
+    def __init__(
+        self,
+        command: str,
+        args: Optional[List[str]] = None,
+        workspace_path: Optional[Path] = None,
+        env: Optional[Dict[str, str]] = None,
+    ):
+        """Initialize LSP client.
+
+        Args:
+            command: Command to start language server
+            args: Command line arguments
+            workspace_path: Workspace root directory
+            env: Environment variables for the process
+        """
+        self.command = command
+        self.args = args or []
+        self.workspace_path = workspace_path
+        self.env = env
+        self.process: Optional[Process] = None
+        self.request_id = 0
+        self.pending_requests: Dict[int, asyncio.Future] = {}
+        self._read_task: Optional[asyncio.Task] = None
+        self._initialized = False
+
+    async def start(self) -> None:
+        """Start the language server process.
+
+        Raises:
+            RuntimeError: If process fails to start
+            asyncio.TimeoutError: If initialization times out
+
+        Example:
+            >>> await client.start()
+        """
+        logger.info(f"Starting LSP server: {self.command} {' '.join(self.args)}")
+        
+        try:
+            self.process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=self.env,
+            )
+        except Exception as e:
+            logger.error(f"Failed to start LSP server: {e}")
+            raise RuntimeError(f"Failed to start LSP server: {e}") from e
+
+        # Start reading responses
+        self._read_task = asyncio.create_task(self._read_responses())
+
+        # Initialize the language server
+        await self._initialize()
+        logger.info("LSP server started and initialized")
+
+    async def stop(self) -> None:
+        """Stop the language server process.
+
+        Example:
+            >>> await client.stop()
+        """
+        logger.info("Stopping LSP server")
+        
+        if not self.process:
+            return
+
+        # Send shutdown request
+        try:
+            await self._send_request("shutdown", {})
+            await self._send_notification("exit", {})
+        except Exception as e:
+            logger.warning(f"Error during LSP shutdown: {e}")
+
+        # Wait for process to exit
+        try:
+            await asyncio.wait_for(self.process.wait(), timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("LSP server did not exit gracefully, terminating")
+            if self.process:
+                self.process.terminate()
+                await self.process.wait()
+
+        if self._read_task:
+            self._read_task.cancel()
+            try:
+                await self._read_task
+            except asyncio.CancelledError:
+                pass
+
+        self.process = None
+        self._initialized = False
+        logger.info("LSP server stopped")
+
+    async def _initialize(self) -> None:
+        """Send initialize request to language server.
+
+        Raises:
+            RuntimeError: If initialization fails
+        """
+        workspace_uri = f"file://{self.workspace_path}" if self.workspace_path else None
+        
+        init_params = {
+            "processId": None,
+            "rootUri": workspace_uri,
+            "capabilities": {
+                "textDocument": {
+                    "synchronization": {
+                        "didOpen": True,
+                        "didChange": True,
+                        "didClose": True,
+                    },
+                    "definition": {"dynamicRegistration": False},
+                    "references": {"dynamicRegistration": False},
+                    "documentSymbol": {"dynamicRegistration": False},
+                },
+                "workspace": {
+                    "symbol": {"dynamicRegistration": False},
+                    "applyEdit": True,
+                },
+            },
+        }
+
+        try:
+            response = await self._send_request("initialize", init_params)
+            logger.debug(f"Initialize response: {response}")
+            
+            # Send initialized notification
+            await self._send_notification("initialized", {})
+            self._initialized = True
+            
+        except Exception as e:
+            logger.error(f"LSP initialization failed: {e}")
+            raise RuntimeError(f"LSP initialization failed: {e}") from e
+
+    async def _send_request(self, method: str, params: Dict[str, Any]) -> Any:
+        """Send JSON-RPC request and wait for response.
+
+        Args:
+            method: LSP method name
+            params: Method parameters
+
+        Returns:
+            Response result
+
+        Raises:
+            RuntimeError: If server is not running
+            Exception: If request fails
+        """
+        if not self.process or not self.process.stdin:
+            raise RuntimeError("LSP server is not running")
+
+        self.request_id += 1
+        request_id = self.request_id
+
+        message = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": method,
+            "params": params,
+        }
+
+        # Create future for response
+        future: asyncio.Future = asyncio.Future()
+        self.pending_requests[request_id] = future
+
+        # Send request
+        await self._write_message(message)
+
+        # Wait for response (with timeout)
+        try:
+            result = await asyncio.wait_for(future, timeout=30.0)
+            return result
+        except asyncio.TimeoutError:
+            self.pending_requests.pop(request_id, None)
+            raise
+        except Exception as e:
+            self.pending_requests.pop(request_id, None)
+            raise
+
+    async def _send_notification(self, method: str, params: Dict[str, Any]) -> None:
+        """Send JSON-RPC notification (no response expected).
+
+        Args:
+            method: LSP method name
+            params: Method parameters
+
+        Raises:
+            RuntimeError: If server is not running
+        """
+        if not self.process or not self.process.stdin:
+            raise RuntimeError("LSP server is not running")
+
+        message = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params,
+        }
+
+        await self._write_message(message)
+
+    async def _write_message(self, message: Dict[str, Any]) -> None:
+        """Write JSON-RPC message to server stdin.
+
+        Args:
+            message: Message to send
+
+        Raises:
+            RuntimeError: If server is not running
+        """
+        if not self.process or not self.process.stdin:
+            raise RuntimeError("LSP server is not running")
+
+        content = json.dumps(message)
+        content_bytes = content.encode("utf-8")
+        
+        header = f"Content-Length: {len(content_bytes)}\r\n\r\n"
+        header_bytes = header.encode("utf-8")
+
+        self.process.stdin.write(header_bytes + content_bytes)
+        await self.process.stdin.drain()
+
+    async def _read_responses(self) -> None:
+        """Read and process responses from server stdout."""
+        if not self.process or not self.process.stdout:
+            return
+
+        try:
+            while True:
+                # Read headers
+                headers = {}
+                while True:
+                    line = await self.process.stdout.readline()
+                    if not line:
+                        return
+                    
+                    line = line.decode("utf-8").strip()
+                    if not line:
+                        break
+                    
+                    if ":" in line:
+                        key, value = line.split(":", 1)
+                        headers[key.strip()] = value.strip()
+
+                # Read content
+                content_length = int(headers.get("Content-Length", 0))
+                if content_length == 0:
+                    continue
+
+                content_bytes = await self.process.stdout.readexactly(content_length)
+                content = content_bytes.decode("utf-8")
+                
+                try:
+                    message = json.loads(content)
+                    await self._handle_message(message)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to decode JSON message: {e}")
+
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error reading LSP responses: {e}")
+
+    async def _handle_message(self, message: Dict[str, Any]) -> None:
+        """Handle incoming message from server.
+
+        Args:
+            message: JSON-RPC message
+        """
+        if "id" in message:
+            # Response to a request
+            request_id = message["id"]
+            future = self.pending_requests.pop(request_id, None)
+            
+            if future and not future.done():
+                if "error" in message:
+                    error = message["error"]
+                    future.set_exception(
+                        Exception(f"LSP error: {error.get('message', 'Unknown error')}")
+                    )
+                else:
+                    future.set_result(message.get("result"))
+        else:
+            # Notification from server
+            method = message.get("method", "")
+            if method.startswith("window/"):
+                # Log server messages
+                params = message.get("params", {})
+                logger.debug(f"Server message: {method} - {params}")
+
+    async def workspace_symbols(self, query: str) -> List[SymbolInformation]:
+        """Search for symbols in the workspace.
+
+        Args:
+            query: Symbol search query
+
+        Returns:
+            List of symbol information
+
+        Example:
+            >>> symbols = await client.workspace_symbols("Repository")
+            >>> for symbol in symbols:
+            ...     print(symbol.name, symbol.location.uri)
+        """
+        if not self._initialized:
+            raise RuntimeError("LSP client not initialized")
+
+        result = await self._send_request("workspace/symbol", {"query": query})
+        
+        if not result:
+            return []
+
+        return [SymbolInformation.from_dict(item) for item in result]
+
+    def is_running(self) -> bool:
+        """Check if language server is running.
+
+        Returns:
+            True if server process is running
+
+        Example:
+            >>> if client.is_running():
+            ...     print("Server is ready")
+        """
+        return self.process is not None and self.process.returncode is None

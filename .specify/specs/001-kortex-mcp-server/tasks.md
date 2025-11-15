@@ -26,11 +26,11 @@ Project uses single project structure:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create directory structure per plan.md (src/kortex_mcp/{tools,lsp,analyzers,models,storage,utils}, tests/)
-- [ ] T002 Update pyproject.toml with dev dependencies (pytest-cov, pytest-mock, mypy, ruff)
-- [ ] T003 [P] Create .gitignore with Python patterns (__pycache__, .pytest_cache, .mypy_cache, .venv)
-- [ ] T004 [P] Create pytest.ini with asyncio_mode=auto and test paths configuration
-- [ ] T005 [P] Create README.md with project overview, setup instructions, and usage examples
+- [X] T001 Create directory structure per plan.md (src/kortex_mcp/{tools,lsp,analyzers,models,storage,utils}, tests/)
+- [X] T002 Update pyproject.toml with dev dependencies (pytest-cov, pytest-mock, mypy, ruff)
+- [X] T003 [P] Create .gitignore with Python patterns (__pycache__, .pytest_cache, .mypy_cache, .venv)
+- [X] T004 [P] Create pytest.ini with asyncio_mode=auto and test paths configuration
+- [X] T005 [P] Create README.md with project overview, setup instructions, and usage examples
 
 ---
 
@@ -40,13 +40,13 @@ Project uses single project structure:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Create base logging configuration in src/kortex_mcp/utils/logging.py
-- [ ] T007 [P] Create file utilities module in src/kortex_mcp/utils/file_utils.py (path handling, file operations)
-- [ ] T008 [P] Create async utilities module in src/kortex_mcp/utils/async_utils.py (async helpers, timeout decorators)
-- [ ] T009 Create core data models in src/kortex_mcp/models/project.py (Project, SourceSet dataclasses with full type hints)
-- [ ] T010 [P] Create symbol models in src/kortex_mcp/models/symbol.py (Symbol, CodeLocation dataclasses)
-- [ ] T011 [P] Create LSP type models in src/kortex_mcp/models/lsp.py (LSP request/response types)
-- [ ] T012 Create base LSP client in src/kortex_mcp/lsp/client.py (async subprocess communication, JSON-RPC)
+- [X] T006 Create base logging configuration in src/kortex_mcp/utils/logging.py
+- [X] T007 [P] Create file utilities module in src/kortex_mcp/utils/file_utils.py (path handling, file operations)
+- [X] T008 [P] Create async utilities module in src/kortex_mcp/utils/async_utils.py (async helpers, timeout decorators)
+- [X] T009 Create core data models in src/kortex_mcp/models/project.py (Project, SourceSet dataclasses with full type hints)
+- [X] T010 [P] Create symbol models in src/kortex_mcp/models/symbol.py (Symbol, CodeLocation dataclasses)
+- [X] T011 [P] Create LSP type models in src/kortex_mcp/models/lsp.py (LSP request/response types)
+- [X] T012 Create base LSP client in src/kortex_mcp/lsp/client.py (async subprocess communication, JSON-RPC)
 - [ ] T013 Create LSP manager in src/kortex_mcp/lsp/manager.py (lifecycle management, health checks, auto-restart)
 - [ ] T014 Create LSP types module in src/kortex_mcp/lsp/types.py (LSP protocol type conversions)
 - [ ] T015 Create memory models in src/kortex_mcp/models/memory.py (Memory, MemoryCategory dataclasses)

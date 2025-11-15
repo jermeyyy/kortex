@@ -2,18 +2,108 @@
 
 MCP server for Kotlin Multiplatform (KMP) and Compose Multiplatform (CMP) coding assistant.
 
+## Overview
+
+Kortex is an MCP (Model Context Protocol) server that provides AI coding assistants with advanced capabilities for working with Kotlin Multiplatform and Compose Multiplatform projects. It combines LSP-based symbolic code analysis with project-aware navigation, cross-platform understanding, and intelligent code editing.
+
+### Key Features
+
+- **LSP-Based Symbol Navigation**: Search, navigate, and analyze code symbols across all KMP source sets (commonMain, androidMain, iosMain, etc.)
+- **Cross-Platform Understanding**: Navigate between Kotlin, Swift, and Objective-C code with full interop awareness
+- **Project Onboarding**: Automatically detect and configure KMP/CMP projects with dependencies and source sets
+- **Symbolic Code Editing**: Precise code modifications using symbol-level operations via LSP
+- **Memory System**: Store and retrieve project-specific knowledge, patterns, and preferences
+- **Planning Mode**: Create and refine specifications with SpecKit integration
+- **CMP Pattern Recognition**: Understand Compose Multiplatform-specific patterns (composables, navigation, state management)
+
 ## Setup
 
 ```bash
 # Create virtual environment
 uv venv
 
+# Activate virtual environment
+source .venv/bin/activate  # On macOS/Linux
+# or
+.venv\Scripts\activate  # On Windows
+
 # Install dependencies
 uv pip install -e ".[dev]"
 ```
 
-## Run
+## Usage
+
+### Running as MCP Server
 
 ```bash
 python -m kortex_mcp.server
 ```
+
+### Configuration in Claude Desktop
+
+Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "kortex": {
+      "command": "python",
+      "args": ["-m", "kortex_mcp.server"],
+      "cwd": "/path/to/kortex"
+    }
+  }
+}
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/kortex_mcp --cov-report=html
+
+# Run specific test file
+pytest tests/test_server.py
+```
+
+### Type Checking
+
+```bash
+mypy src/kortex_mcp
+```
+
+### Linting
+
+```bash
+ruff check src/ tests/
+ruff format src/ tests/
+```
+
+## Architecture
+
+```
+src/kortex_mcp/
+├── server.py         # FastMCP server initialization
+├── tools/            # MCP tool implementations
+├── lsp/              # LSP client and language server managers
+├── analyzers/        # Code analysis (KMP, CMP patterns)
+├── models/           # Data models and types
+├── storage/          # Persistence layer (memory, project config)
+└── utils/            # Utilities (logging, file operations, async helpers)
+```
+
+## Requirements
+
+- Python 3.10+
+- Kotlin Language Server (for Kotlin LSP)
+- SourceKit-LSP (for Swift LSP, optional)
+- clangd (for Objective-C LSP, optional)
+
+## License
+
+MIT
+
