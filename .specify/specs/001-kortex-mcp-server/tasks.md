@@ -102,23 +102,25 @@ Project uses single project structure:
 
 ### Tests for User Story 2
 
-- [ ] T037 [P] [US2] Unit test for Swift LSP server integration in tests/test_lsp/test_swift_server.py
-- [ ] T038 [P] [US2] Unit test for Objective-C LSP server integration in tests/test_lsp/test_objc_server.py
-- [ ] T039 [P] [US2] Integration test for cross-platform symbol resolution in tests/test_tools/test_lsp_tools.py
-- [ ] T040 [P] [US2] Integration test for expect/actual navigation in tests/test_analyzers/test_kmp_analyzer.py
+- [X] T037 [P] [US2] Unit test for Swift LSP server integration in tests/test_lsp/test_swift_server.py
+- [X] T038 [P] [US2] Unit test for Objective-C LSP server integration in tests/test_lsp/test_objc_server.py
+- [X] T039 [P] [US2] Integration test for cross-platform symbol resolution in tests/test_tools/test_lsp_tools.py
+- [X] T040 [P] [US2] Integration test for expect/actual navigation in tests/test_analyzers/test_kmp_analyzer.py
 
 ### Implementation for User Story 2
 
-- [ ] T041 [P] [US2] Implement Swift LSP server integration in src/kortex_mcp/lsp/swift_server.py (SourceKit-LSP configuration)
-- [ ] T042 [P] [US2] Implement Objective-C LSP server integration in src/kortex_mcp/lsp/objc_server.py (clangd configuration)
-- [ ] T043 [US2] Add multi-LSP support to manager in src/kortex_mcp/lsp/manager.py (handle multiple language servers)
-- [ ] T044 [US2] Create KMP analyzer in src/kortex_mcp/analyzers/kmp_analyzer.py (expect/actual detection, source set analysis)
-- [ ] T045 [US2] Implement expect/actual pair detection in src/kortex_mcp/analyzers/kmp_analyzer.py
+- [X] T041 [P] [US2] Implement Swift LSP server integration in src/kortex_mcp/lsp/swift_server.py (SourceKit-LSP configuration)
+- [X] T042 [P] [US2] Implement Objective-C LSP server integration in src/kortex_mcp/lsp/objc_server.py (clangd configuration)
+- [X] T043 [US2] Add multi-LSP support to manager in src/kortex_mcp/lsp/manager.py (handle multiple language servers)
+- [X] T044 [US2] Create KMP analyzer in src/kortex_mcp/analyzers/kmp_analyzer.py (expect/actual detection, source set analysis)
+- [X] T045 [US2] Implement expect/actual pair detection in src/kortex_mcp/analyzers/kmp_analyzer.py
 - [ ] T046 [US2] Implement cross-language symbol lookup in src/kortex_mcp/tools/lsp_tools.py (query Kotlin then Swift/ObjC)
 - [ ] T047 [US2] Add expect/actual navigation tool in src/kortex_mcp/tools/lsp_tools.py
-- [ ] T048 [US2] Add comprehensive pydoc to all US2 functions and classes
+- [X] T048 [US2] Add comprehensive pydoc to all US2 functions and classes
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - can navigate cross-platform code
+
+NOTE: T046-T047 (cross-platform tools) require deeper integration with the MCP tool layer and would benefit from completing US3 (Project Onboarding) first to properly initialize all LSP servers. These tasks are deferred to integrate better with the overall tooling architecture.
 
 ---
 

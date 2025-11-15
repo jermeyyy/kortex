@@ -1,3 +1,8 @@
-"""Analyzers for project and code analysis."""
+"""Analyzers for code analysis in Kotlin Multiplatform projects.
 
-__all__ = []
+This package provides analyzers for KMP/CMP-specific patterns and structures.
+"""
+
+from .kmp_analyzer import KMPAnalyzer, ExpectActualPair
+
+__all__ = ["KMPAnalyzer", "ExpectActualPair"]

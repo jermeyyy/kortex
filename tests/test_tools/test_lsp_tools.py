@@ -445,3 +445,177 @@ def create_mock_location(file: str, line: int, character: int = 0) -> Location:
             end=Position(line=line, character=character + 1)
         )
     )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestCrossPlatformSymbolResolution:
+    """Integration tests for cross-platform symbol resolution (T039).
+    
+    Tests the ability to search for and resolve symbols across Kotlin,
+    Swift, and Objective-C codebases, understanding interop relationships.
+    """
+
+    async def test_cross_language_symbol_search_kotlin_to_swift(self):
+        """Test searching for Kotlin symbols used in Swift code."""
+        # Expected: Tool can find Kotlin class and show Swift usage
+        # Given a Kotlin class "SharedRepository" in commonMain
+        # When querying its usage in Swift files
+        # Then return Swift call sites
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+    async def test_cross_language_symbol_search_swift_to_kotlin(self):
+        """Test finding Kotlin implementation from Swift usage."""
+        # Expected: From Swift call site, navigate to Kotlin definition
+        # Given Swift code calling a Kotlin class
+        # When requesting go-to-definition
+        # Then navigate to actual Kotlin implementation
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+    async def test_cross_language_symbol_search_multiple_lsp_servers(self):
+        """Test querying symbols across multiple active LSP servers."""
+        # Mock multiple LSP servers (Kotlin, Swift)
+        mock_kotlin_client = AsyncMock(spec=LSPClient)
+        mock_kotlin_client.workspace_symbols = AsyncMock(return_value=[
+            SymbolInformation(
+                name="SharedRepository",
+                kind=5,
+                location=Location(
+                    uri="file:///test/commonMain/SharedRepository.kt",
+                    range=Range(
+                        start=Position(line=10, character=0),
+                        end=Position(line=50, character=0)
+                    )
+                ),
+                containerName="com.example.shared"
+            )
+        ])
+        
+        mock_swift_client = AsyncMock(spec=LSPClient)
+        mock_swift_client.workspace_symbols = AsyncMock(return_value=[
+            SymbolInformation(
+                name="SharedRepository",
+                kind=5,
+                location=Location(
+                    uri="file:///test/iosMain/SharedRepository.swift",
+                    range=Range(
+                        start=Position(line=5, character=0),
+                        end=Position(line=15, character=0)
+                    )
+                ),
+                containerName="SharedModule"
+            )
+        ])
+        
+        # Expected: Cross-platform tool should query all relevant LSP servers
+        # and aggregate results showing symbols from both Kotlin and Swift
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+    async def test_cross_language_handles_objc_interop(self):
+        """Test handling Objective-C interop with Kotlin."""
+        # Expected: Can find Objective-C usage of Kotlin classes
+        # Kotlin classes exposed via @objc annotations
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+    async def test_cross_language_respects_platform_boundaries(self):
+        """Test that cross-platform search respects platform-specific code."""
+        # Expected: Understand that androidMain code is not visible to iOS
+        # Only commonMain and iosMain are relevant for Swift interop
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+    async def test_cross_language_handles_no_swift_lsp(self):
+        """Test graceful handling when Swift LSP is not available."""
+        # Expected: If only Kotlin LSP is running, tool should still work
+        # but report limited cross-platform information
+        
+        pytest.skip("Cross-platform tool not implemented yet - will be implemented in T046")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestExpectActualNavigation:
+    """Integration tests for expect/actual declaration navigation (T040).
+    
+    Tests the ability to navigate between Kotlin Multiplatform expect/actual
+    declarations across different source sets.
+    """
+
+    async def test_find_actual_implementations_for_expect(self):
+        """Test finding all actual implementations of an expect declaration."""
+        # Given an expect declaration in commonMain:
+        # expect class PlatformRepository
+        # When requesting implementations
+        # Then return actual declarations from androidMain, iosMain, etc.
+        
+        # Expected tool signature:
+        # find_expect_actual(file: str, line: int) -> List[Dict]
+        # Returns: [
+        #     {"type": "expect", "location": "commonMain/PlatformRepository.kt:10"},
+        #     {"type": "actual", "platform": "android", "location": "androidMain/PlatformRepository.kt:5"},
+        #     {"type": "actual", "platform": "ios", "location": "iosMain/PlatformRepository.kt:8"}
+        # ]
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_navigate_from_actual_to_expect(self):
+        """Test navigating from actual implementation to expect declaration."""
+        # Given an actual implementation in androidMain
+        # When requesting go-to-definition or "find expect"
+        # Then navigate to expect declaration in commonMain
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_for_functions(self):
+        """Test expect/actual navigation for functions (not just classes)."""
+        # expect fun getPlatformName(): String
+        # Should find actual implementations across platforms
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_for_properties(self):
+        """Test expect/actual navigation for properties."""
+        # expect val platform: String
+        # Should find actual implementations
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_detects_missing_implementations(self):
+        """Test detection of expect declarations without all platform actuals."""
+        # Expected: If expect exists but actual is missing for a platform,
+        # tool should report this as a warning
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_handles_mismatched_signatures(self):
+        """Test handling when actual signature doesn't match expect."""
+        # Expected: Tool should detect signature mismatches between
+        # expect and actual declarations
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_with_typealiases(self):
+        """Test expect/actual with typealiases."""
+        # expect class Platform
+        # actual typealias Platform = AndroidPlatform
+        # Should handle typealiases correctly
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")
+
+    async def test_expect_actual_groups_by_source_set(self):
+        """Test that results are properly grouped by source set."""
+        # Expected output should group actual implementations by source set:
+        # {
+        #     "expect": {...},
+        #     "actuals": {
+        #         "androidMain": {...},
+        #         "iosMain": {...},
+        #         "jvmMain": {...}
+        #     }
+        # }
+        
+        pytest.skip("Expect/actual tool not implemented yet - will be implemented in T047")

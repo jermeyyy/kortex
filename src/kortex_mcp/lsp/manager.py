@@ -3,15 +3,21 @@
 This module provides the LSPManager class that handles multiple language
 server instances with automatic health checks, crash recovery, and restart
 capabilities.
+
+Supports Kotlin, Swift (SourceKit-LSP), and Objective-C (clangd) language servers
+for comprehensive Kotlin Multiplatform project analysis.
 """
 
 import asyncio
 from pathlib import Path
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional, List, Any, Union
 from datetime import datetime, timedelta
 
 from ..utils.logging import get_logger
 from .client import LSPClient
+from .kotlin_server import KotlinLSPServer
+from .swift_server import SwiftLSPServer
+from .objc_server import ObjCLSPServer
 
 
 logger = get_logger(__name__)
@@ -351,3 +357,161 @@ class LSPManager:
                 "last_health_check": self.last_health_check.get(language_id),
             }
         return status
+
+    async def start_kotlin_server(
+        self,
+        workspace_path: Path,
+        server_command: Optional[str] = None,
+    ) -> None:
+        """Start Kotlin Language Server.
+
+        Convenience method for starting Kotlin LSP with proper configuration.
+
+        Args:
+            workspace_path: Path to KMP project root
+            server_command: Custom server command (default: auto-detect)
+
+        Raises:
+            RuntimeError: If server fails to start
+            ValueError: If Kotlin server already running
+
+        Example:
+            >>> await manager.start_kotlin_server(Path("/project"))
+        """
+        kotlin_server = KotlinLSPServer(
+            workspace_path=workspace_path,
+            server_command=server_command
+        )
+        
+        await self.start_server(
+            language_id="kotlin",
+            command=kotlin_server.server_command,
+            args=[],
+            workspace_path=workspace_path,
+            env=kotlin_server.client.env
+        )
+
+    async def start_swift_server(
+        self,
+        workspace_path: Path,
+        sourcekit_path: Optional[str] = None,
+    ) -> None:
+        """Start Swift Language Server (SourceKit-LSP).
+
+        Convenience method for starting Swift LSP with proper configuration.
+
+        Args:
+            workspace_path: Path to project root with Swift/iOS code
+            sourcekit_path: Custom SourceKit-LSP path (default: auto-detect)
+
+        Raises:
+            RuntimeError: If server fails to start
+            ValueError: If Swift server already running
+
+        Example:
+            >>> await manager.start_swift_server(Path("/project"))
+        """
+        swift_server = SwiftLSPServer(
+            workspace_path=workspace_path,
+            sourcekit_path=sourcekit_path
+        )
+        
+        await self.start_server(
+            language_id="swift",
+            command=swift_server.command,
+            args=[],
+            workspace_path=workspace_path,
+            env=swift_server.client.env
+        )
+
+    async def start_objc_server(
+        self,
+        workspace_path: Path,
+        clangd_path: Optional[str] = None,
+        clangd_args: Optional[List[str]] = None,
+    ) -> None:
+        """Start Objective-C Language Server (clangd).
+
+        Convenience method for starting clangd with proper configuration.
+
+        Args:
+            workspace_path: Path to project root with Objective-C code
+            clangd_path: Custom clangd path (default: auto-detect)
+            clangd_args: Additional clangd arguments
+
+        Raises:
+            RuntimeError: If server fails to start
+            ValueError: If Objective-C server already running
+
+        Example:
+            >>> await manager.start_objc_server(Path("/project"))
+        """
+        objc_server = ObjCLSPServer(
+            workspace_path=workspace_path,
+            clangd_path=clangd_path,
+            clangd_args=clangd_args
+        )
+        
+        await self.start_server(
+            language_id="objective-c",
+            command=objc_server.command,
+            args=objc_server.args,
+            workspace_path=workspace_path,
+            env=objc_server.client.env
+        )
+
+    async def start_all_for_kmp_project(
+        self,
+        workspace_path: Path,
+        include_swift: bool = True,
+        include_objc: bool = True,
+    ) -> None:
+        """Start all relevant language servers for a KMP project.
+
+        Convenience method to start Kotlin, Swift, and Objective-C servers
+        for comprehensive KMP/iOS project support.
+
+        Args:
+            workspace_path: Path to KMP project root
+            include_swift: Start Swift LSP server
+            include_objc: Start Objective-C LSP server
+
+        Raises:
+            RuntimeError: If any server fails to start
+
+        Example:
+            >>> # Start all servers for KMP project
+            >>> await manager.start_all_for_kmp_project(Path("/project"))
+            >>>
+            >>> # Start only Kotlin and Swift
+            >>> await manager.start_all_for_kmp_project(
+            ...     Path("/project"),
+            ...     include_objc=False
+            ... )
+        """
+        logger.info(f"Starting language servers for KMP project: {workspace_path}")
+        
+        # Always start Kotlin server for KMP
+        try:
+            await self.start_kotlin_server(workspace_path)
+        except Exception as e:
+            logger.error(f"Failed to start Kotlin server: {e}")
+            # Continue to try other servers
+        
+        # Optionally start Swift server
+        if include_swift:
+            try:
+                await self.start_swift_server(workspace_path)
+            except Exception as e:
+                logger.warning(f"Failed to start Swift server: {e}")
+                # Not critical, continue
+        
+        # Optionally start Objective-C server
+        if include_objc:
+            try:
+                await self.start_objc_server(workspace_path)
+            except Exception as e:
+                logger.warning(f"Failed to start Objective-C server: {e}")
+                # Not critical, continue
+        
+        logger.info("Language server initialization complete")
