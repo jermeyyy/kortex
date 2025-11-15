@@ -47,16 +47,16 @@ Project uses single project structure:
 - [X] T010 [P] Create symbol models in src/kortex_mcp/models/symbol.py (Symbol, CodeLocation dataclasses)
 - [X] T011 [P] Create LSP type models in src/kortex_mcp/models/lsp.py (LSP request/response types)
 - [X] T012 Create base LSP client in src/kortex_mcp/lsp/client.py (async subprocess communication, JSON-RPC)
-- [ ] T013 Create LSP manager in src/kortex_mcp/lsp/manager.py (lifecycle management, health checks, auto-restart)
-- [ ] T014 Create LSP types module in src/kortex_mcp/lsp/types.py (LSP protocol type conversions)
-- [ ] T015 Create memory models in src/kortex_mcp/models/memory.py (Memory, MemoryCategory dataclasses)
-- [ ] T016 Create memory storage in src/kortex_mcp/storage/memory_store.py (JSON-based persistence)
-- [ ] T017 Create project storage in src/kortex_mcp/storage/project_store.py (project config persistence)
-- [ ] T018 Create FastMCP server setup in src/kortex_mcp/server.py (server initialization, lifecycle hooks)
-- [ ] T019 Create base tool class in src/kortex_mcp/tools/base.py (common tool functionality, error handling)
-- [ ] T020 Create test fixtures directory tests/fixtures/ with sample KMP project structure
-- [ ] T021 [P] Create pytest conftest.py with async fixtures and mock LSP server factory
-- [ ] T022 [P] Setup mypy configuration in pyproject.toml (strict mode, ignore missing imports for external libs)
+- [X] T013 Create LSP manager in src/kortex_mcp/lsp/manager.py (lifecycle management, health checks, auto-restart)
+- [X] T014 Create LSP types module in src/kortex_mcp/lsp/types.py (LSP protocol type conversions)
+- [X] T015 Create memory models in src/kortex_mcp/models/memory.py (Memory, MemoryCategory dataclasses)
+- [X] T016 Create memory storage in src/kortex_mcp/storage/memory_store.py (JSON-based persistence)
+- [X] T017 Create project storage in src/kortex_mcp/storage/project_store.py (project config persistence)
+- [X] T018 Create FastMCP server setup in src/kortex_mcp/server.py (server initialization, lifecycle hooks)
+- [X] T019 Create base tool class in src/kortex_mcp/tools/base.py (common tool functionality, error handling)
+- [X] T020 Create test fixtures directory tests/fixtures/ with sample KMP project structure
+- [X] T021 [P] Create pytest conftest.py with async fixtures and mock LSP server factory
+- [X] T022 [P] Setup mypy configuration in pyproject.toml (strict mode, ignore missing imports for external libs)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
