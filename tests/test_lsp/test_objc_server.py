@@ -75,12 +75,12 @@ class TestObjCLSPServerOperations:
         mock_process.returncode = None
         
         with patch('asyncio.create_subprocess_exec', return_value=mock_process):
-            with patch.object(server, '_read_responses', return_value=asyncio.Future()):
-                with patch.object(server, '_initialize', return_value=None):
+            with patch.object(server.client, '_read_responses', return_value=asyncio.Future()):
+                with patch.object(server.client, '_initialize', return_value=None):
                     await server.start()
                     
-                    assert server.process == mock_process
-                    assert server._initialized is True
+                    assert server.client.process == mock_process
+                    assert server.client._initialized is True
 
     async def test_supports_objc_file_types(self):
         """Test that server correctly identifies Objective-C file types."""
@@ -96,49 +96,54 @@ class TestObjCLSPServerOperations:
         """Test workspace symbol search in Objective-C files."""
         server = ObjCLSPServer(workspace_path=Path("/test/workspace"))
         
-        # Mock the request method
+        # Mock the client's workspace_symbols method
         mock_symbols = [
-            {
-                "name": "SharedRepository",
-                "kind": 5,  # Class
-                "location": {
-                    "uri": "file:///test/workspace/ios/SharedRepository.m",
-                    "range": {
-                        "start": {"line": 10, "character": 0},
-                        "end": {"line": 50, "character": 1}
-                    }
-                }
-            }
+            SymbolInformation(
+                name="SharedRepository",
+                kind=5,  # Class
+                location=Location(
+                    uri="file:///test/workspace/ios/SharedRepository.m",
+                    range=Range(
+                        start=Position(line=10, character=0),
+                        end=Position(line=50, character=1)
+                    )
+                ),
+                containerName=""
+            )
         ]
         
-        with patch.object(server, 'request', return_value=mock_symbols):
-            symbols = await server.workspace_symbol("SharedRepository")
-            
-            assert len(symbols) == 1
-            assert symbols[0].name == "SharedRepository"
-            assert symbols[0].location.uri.endswith("SharedRepository.m")
+        # Mock is_running to return True
+        with patch.object(server, 'is_running', return_value=True):
+            with patch.object(server.client, 'workspace_symbols', return_value=mock_symbols):
+                symbols = await server.workspace_symbol("SharedRepository")
+                
+                assert len(symbols) == 1
+                assert symbols[0]["name"] == "SharedRepository"
+                assert symbols[0]["location"]["uri"].endswith("SharedRepository.m")
 
     async def test_header_file_navigation(self):
         """Test navigation between .h and .m files."""
         server = ObjCLSPServer(workspace_path=Path("/test/workspace"))
         
         # Mock definition lookup
-        mock_location = {
-            "uri": "file:///test/workspace/ios/MyClass.m",
-            "range": {
-                "start": {"line": 20, "character": 0},
-                "end": {"line": 20, "character": 10}
-            }
-        }
-        
-        with patch.object(server, 'request', return_value=[mock_location]):
-            location = await server.goto_definition(
-                Path("/test/workspace/ios/MyClass.h"),
-                Position(line=5, character=10)
+        mock_location = Location(
+            uri="file:///test/workspace/ios/MyClass.m",
+            range=Range(
+                start=Position(line=20, character=0),
+                end=Position(line=20, character=10)
             )
-            
-            assert location is not None
-            assert "MyClass.m" in location.uri
+        )
+        
+        # Mock is_running to return True
+        with patch.object(server, 'is_running', return_value=True):
+            with patch.object(server.client, 'go_to_definition', return_value=mock_location):
+                location = await server.goto_definition(
+                    Path("/test/workspace/ios/MyClass.h"),
+                    {"line": 5, "character": 10}
+                )
+                
+                assert location is not None
+                assert "MyClass.m" in location["uri"]
 
 
 @pytest.mark.unit
@@ -167,12 +172,12 @@ class TestObjCLSPServerErrorHandling:
         mock_process.returncode = None
         
         with patch('asyncio.create_subprocess_exec', return_value=mock_process):
-            with patch.object(server, '_read_responses', return_value=asyncio.Future()):
-                with patch.object(server, '_initialize', return_value=None):
+            with patch.object(server.client, '_read_responses', return_value=asyncio.Future()):
+                with patch.object(server.client, '_initialize', return_value=None):
                     await server.start()
                     
                     # Should still start successfully
-                    assert server.process is not None
+                    assert server.client.process is not None
 
     async def test_handles_objc_compilation_errors(self):
         """Test that server can still provide symbols despite compilation errors."""
@@ -181,11 +186,13 @@ class TestObjCLSPServerErrorHandling:
         # Mock symbol search that returns results even with errors
         mock_symbols = []
         
-        with patch.object(server, 'request', return_value=mock_symbols):
-            symbols = await server.workspace_symbol("NonExistent")
-            
-            # Should return empty list, not raise exception
-            assert symbols == []
+        # Mock is_running to return True
+        with patch.object(server, 'is_running', return_value=True):
+            with patch.object(server.client, 'workspace_symbols', return_value=mock_symbols):
+                symbols = await server.workspace_symbol("NonExistent")
+                
+                # Should return empty list, not raise exception
+                assert symbols == []
 
 
 @pytest.mark.integration

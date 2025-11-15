@@ -509,7 +509,9 @@ class TestLSPClientJsonRpc:
             workspace_path=Path("/test/workspace")
         )
         
-        mock_stdin = AsyncMock()
+        # Create mock stdin with write as regular Mock (not async) and drain as AsyncMock
+        mock_stdin = MagicMock()
+        mock_stdin.drain = AsyncMock()
         mock_process = MagicMock()
         mock_process.stdin = mock_stdin
         client.process = mock_process
@@ -536,6 +538,9 @@ class TestLSPClientJsonRpc:
         # Verify Content-Length is correct
         content_length = len(message_json.encode("utf-8"))
         assert f"Content-Length: {content_length}" in written_str
+        
+        # Verify drain was awaited
+        mock_stdin.drain.assert_awaited_once()
 
     async def test_handle_message_resolves_pending_request(self):
         """Test _handle_message() resolves pending request futures."""
