@@ -10,6 +10,7 @@ import asyncio
 
 from ..lsp.manager import LSPManager
 from ..models.lsp import Location
+from ..analyzers.kmp_analyzer import KMPAnalyzer
 from ..utils.logging import get_logger
 from .base import with_timeout, ToolError, ToolValidationError
 
@@ -24,13 +25,15 @@ class LSPTools:
     using LSP servers managed by LSPManager.
     """
     
-    def __init__(self, lsp_manager: LSPManager):
+    def __init__(self, lsp_manager: LSPManager, kmp_analyzer: Optional[KMPAnalyzer] = None):
         """Initialize LSP tools.
         
         Args:
             lsp_manager: LSP manager instance for server lifecycle
+            kmp_analyzer: Optional KMP analyzer for expect/actual detection
         """
         self.lsp_manager = lsp_manager
+        self.kmp_analyzer = kmp_analyzer
     
     @with_timeout(30.0)
     async def search_symbols(
@@ -432,3 +435,232 @@ class LSPTools:
         # Convert to absolute path
         abs_path = Path(path).resolve()
         return f"file://{abs_path}"
+
+    @with_timeout(45.0)
+    async def cross_language_symbol_lookup(
+        self,
+        query: str,
+        languages: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Search for symbols across multiple languages (Kotlin, Swift, Objective-C).
+        
+        MCP Tool for cross-platform symbol search that queries multiple LSP servers
+        to find symbol definitions across Kotlin, Swift, and Objective-C codebases.
+        
+        Args:
+            query: Symbol name to search for (e.g., "SharedRepository")
+            languages: List of languages to search (default: ["kotlin", "swift", "objective-c"])
+            
+        Returns:
+            Dictionary with results grouped by language:
+            {
+                "query": str,
+                "total_count": int,
+                "results": {
+                    "kotlin": [...],
+                    "swift": [...],
+                    "objective-c": [...]
+                }
+            }
+            
+        Raises:
+            ToolValidationError: If query is empty
+            ToolError: If no LSP servers are available
+            
+        Example:
+            >>> tools = LSPTools(manager, analyzer)
+            >>> result = await tools.cross_language_symbol_lookup("SharedRepository")
+            >>> print(f"Found in {len(result['results'])} languages")
+            >>> for lang, symbols in result['results'].items():
+            ...     print(f"{lang}: {len(symbols)} symbols")
+        """
+        # Validate input
+        if not query or not query.strip():
+            raise ToolValidationError(
+                tool_name="cross_language_symbol_lookup",
+                field="query",
+                reason="Query cannot be empty"
+            )
+        
+        query = query.strip()
+        
+        # Default to all supported languages
+        if languages is None:
+            languages = ["kotlin", "swift", "objective-c"]
+        
+        logger.info(f"Cross-language symbol lookup: '{query}' across {languages}")
+        
+        results = {}
+        total_count = 0
+        errors = []
+        
+        # Query each language server
+        for language in languages:
+            try:
+                client = self.lsp_manager.get_client(language)
+                
+                if not client or not client.is_running():
+                    logger.warning(f"LSP server for '{language}' is not available, skipping")
+                    errors.append(f"{language}: server not available")
+                    results[language] = []
+                    continue
+                
+                # Search for symbols
+                symbols = await client.workspace_symbols(query)
+                
+                # Format results
+                formatted_symbols = []
+                for symbol in symbols:
+                    # Convert URI to path
+                    file_path = symbol.location.uri
+                    if file_path.startswith("file://"):
+                        file_path = file_path[7:]
+                    
+                    formatted_symbols.append({
+                        "name": symbol.name,
+                        "kind": self._format_symbol_kind(symbol.kind),
+                        "file": file_path,
+                        "line": symbol.location.range.start.line,
+                        "character": symbol.location.range.start.character,
+                        "container": symbol.containerName or "",
+                        "language": language
+                    })
+                
+                results[language] = formatted_symbols
+                total_count += len(formatted_symbols)
+                logger.info(f"Found {len(formatted_symbols)} symbols in {language}")
+                
+            except Exception as e:
+                logger.error(f"Error searching {language}: {e}")
+                errors.append(f"{language}: {str(e)}")
+                results[language] = []
+        
+        # Check if any results were found
+        if total_count == 0 and len(errors) == len(languages):
+            raise ToolError(
+                "No LSP servers available for cross-language search",
+                details={"languages": languages, "errors": errors},
+                tool_name="cross_language_symbol_lookup"
+            )
+        
+        result = {
+            "query": query,
+            "total_count": total_count,
+            "results": results
+        }
+        
+        if errors:
+            result["errors"] = errors
+        
+        logger.info(f"Cross-language lookup complete: {total_count} total symbols")
+        return result
+
+    @with_timeout(30.0)
+    async def navigate_expect_actual(
+        self,
+        symbol_name: str
+    ) -> Dict[str, Any]:
+        """Navigate between expect declarations and actual implementations.
+        
+        MCP Tool for finding expect/actual pairs in Kotlin Multiplatform projects.
+        Given a symbol name, finds the expect declaration in commonMain and all
+        actual implementations across platform-specific source sets.
+        
+        Args:
+            symbol_name: Name of the expect/actual symbol (e.g., "Platform")
+            
+        Returns:
+            Dictionary with expect location and actual implementations:
+            {
+                "symbol": str,
+                "expect": {
+                    "file": str,
+                    "line": int,
+                    "sourceSet": "commonMain",
+                    "signature": str
+                },
+                "actuals": {
+                    "androidMain": {...},
+                    "iosMain": {...}
+                },
+                "validation": {
+                    "is_valid": bool,
+                    "issues": [str]
+                }
+            }
+            
+        Raises:
+            ToolValidationError: If symbol_name is empty or analyzer not configured
+            ToolError: If symbol not found or analysis fails
+            
+        Example:
+            >>> tools = LSPTools(manager, analyzer)
+            >>> result = await tools.navigate_expect_actual("Platform")
+            >>> print(f"Expect: {result['expect']['file']}")
+            >>> for source_set, actual in result['actuals'].items():
+            ...     print(f"Actual ({source_set}): {actual['file']}")
+        """
+        # Validate input
+        if not symbol_name or not symbol_name.strip():
+            raise ToolValidationError(
+                tool_name="navigate_expect_actual",
+                field="symbol_name",
+                reason="Symbol name cannot be empty"
+            )
+        
+        if not self.kmp_analyzer:
+            raise ToolValidationError(
+                tool_name="navigate_expect_actual",
+                field="kmp_analyzer",
+                reason="KMP analyzer not configured. This tool requires a KMP project context."
+            )
+        
+        symbol_name = symbol_name.strip()
+        
+        logger.info(f"Navigating expect/actual for: '{symbol_name}'")
+        
+        try:
+            # Find expect/actual pairs for this symbol
+            pairs = await self.kmp_analyzer.find_expect_actual_pairs(symbol_name)
+            
+            if not pairs:
+                raise ToolError(
+                    f"No expect/actual pairs found for symbol '{symbol_name}'",
+                    details={"symbol": symbol_name},
+                    tool_name="navigate_expect_actual"
+                )
+            
+            # Use the first pair (should be only one for a given symbol name)
+            pair = pairs[0]
+            
+            # Validate the pair
+            is_valid, issues = self.kmp_analyzer.validate_expect_actual_pair(pair)
+            
+            result = {
+                "symbol": pair.name,
+                "kind": pair.kind,
+                "expect": pair.expect_location,
+                "actuals": pair.actual_locations,
+                "validation": {
+                    "is_valid": is_valid,
+                    "issues": issues
+                }
+            }
+            
+            logger.info(
+                f"Found expect/actual pair for '{symbol_name}': "
+                f"{len(pair.actual_locations)} actual implementations"
+            )
+            return result
+            
+        except ToolValidationError:
+            raise
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.error(f"Error navigating expect/actual: {e}")
+            raise ToolError(
+                f"Failed to navigate expect/actual for '{symbol_name}': {str(e)}",
+                details={"symbol": symbol_name},
+                tool_name="navigate_expect_actual"
+            ) from e

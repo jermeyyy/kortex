@@ -66,15 +66,19 @@ class KotlinLSPServer:
         """Find Kotlin language server executable.
         
         Returns:
-            Path to kotlin-language-server executable
+            Path to kotlin-lsp executable
             
         Raises:
             FileNotFoundError: If server executable not found
         """
         # Try common installation locations
         candidates = [
-            "kotlin-language-server",  # In PATH
+            "kotlin-lsp",  # In PATH (modern installation)
+            "kotlin-language-server",  # Legacy name
             "kotlin-language-server.bat",  # Windows
+            str(Path.home() / ".local" / "bin" / "kotlin-lsp"),
+            "/opt/homebrew/bin/kotlin-lsp",
+            "/usr/local/bin/kotlin-lsp",
             str(Path.home() / ".local" / "bin" / "kotlin-language-server"),
             "/usr/local/bin/kotlin-language-server",
             "/opt/homebrew/bin/kotlin-language-server",
@@ -87,7 +91,7 @@ class KotlinLSPServer:
         
         # If not found, return default and let subprocess fail with better error
         logger.warning("Kotlin language server not found in PATH")
-        return "kotlin-language-server"
+        return "kotlin-lsp"
     
     def _get_environment_vars(self) -> Dict[str, str]:
         """Get environment variables for Kotlin language server.

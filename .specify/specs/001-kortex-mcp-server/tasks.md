@@ -142,13 +142,18 @@ Project uses single project structure:
 - [X] T043 [US2] Add multi-LSP support to manager in src/kortex_mcp/lsp/manager.py (handle multiple language servers)
 - [X] T044 [US2] Create KMP analyzer in src/kortex_mcp/analyzers/kmp_analyzer.py (expect/actual detection, source set analysis)
 - [X] T045 [US2] Implement expect/actual pair detection in src/kortex_mcp/analyzers/kmp_analyzer.py
-- [ ] T046 [US2] Implement cross-language symbol lookup in src/kortex_mcp/tools/lsp_tools.py (query Kotlin then Swift/ObjC)
-- [ ] T047 [US2] Add expect/actual navigation tool in src/kortex_mcp/tools/lsp_tools.py
+- [X] T046 [US2] Implement cross-language symbol lookup in src/kortex_mcp/tools/lsp_tools.py (query Kotlin then Swift/ObjC)
+- [X] T047 [US2] Add expect/actual navigation tool in src/kortex_mcp/tools/lsp_tools.py
 - [X] T048 [US2] Add comprehensive pydoc to all US2 functions and classes
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - can navigate cross-platform code
 
-NOTE: T046-T047 (cross-platform tools) require deeper integration with the MCP tool layer and would benefit from completing US3 (Project Onboarding) first to properly initialize all LSP servers. These tasks are deferred to integrate better with the overall tooling architecture.
+**US2 Complete Status**:
+- [X] T046-T047 now IMPLEMENTED - cross-language symbol lookup and expect/actual navigation tools added
+- [X] Two new MCP tools: `cross_language_symbol_lookup()` and `navigate_expect_actual()`
+- [X] Integrated with LSPManager for multi-language support
+- [X] Integrated with KMPAnalyzer for expect/actual detection
+- [X] Comprehensive error handling and validation
 
 ---
 
