@@ -1,6 +1,10 @@
-# Kortex MCP Server
+# Kortex Code Assistant
 
-MCP server for Kotlin Multiplatform (KMP) and Compose Multiplatform (CMP) coding assistant.
+<p align="center">
+  <img src="art/kortex_logo.svg" alt="NavPlayground Logo" width="200"/>
+</p>
+
+Code assistant MCP server for Kotlin Multiplatform (KMP) and Compose Multiplatform (CMP) coding assistant.
 
 ## Overview
 
