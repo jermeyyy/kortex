@@ -358,6 +358,186 @@ class LSPClient:
 
         return [SymbolInformation.from_dict(item) for item in result]
 
+    async def go_to_definition(
+        self,
+        file_uri: str,
+        line: int,
+        character: int
+    ) -> Optional[Location]:
+        """Get definition location for symbol at position.
+
+        Args:
+            file_uri: URI of the document (e.g., "file:///path/to/file.kt")
+            line: Line number (0-indexed)
+            character: Character position (0-indexed)
+
+        Returns:
+            Location of definition, or None if not found
+
+        Raises:
+            RuntimeError: If client is not initialized
+
+        Example:
+            >>> location = await client.go_to_definition(
+            ...     "file:///project/Repository.kt",
+            ...     line=15,
+            ...     character=10
+            ... )
+            >>> if location:
+            ...     print(f"Definition at {location.uri}:{location.range.start.line}")
+        """
+        if not self._initialized:
+            raise RuntimeError("LSP client not initialized")
+
+        params = {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": line, "character": character}
+        }
+
+        result = await self._send_request("textDocument/definition", params)
+
+        if not result:
+            return None
+
+        # Result can be Location, Location[], or LocationLink[]
+        # Handle single Location response
+        if isinstance(result, dict):
+            return self._parse_location(result)
+
+        # Handle array of Locations - return first one
+        if isinstance(result, list) and len(result) > 0:
+            item = result[0]
+            # Check if it's LocationLink (has targetUri/targetRange)
+            if "targetUri" in item:
+                range_data = item["targetRange"]
+                return Location(
+                    uri=item["targetUri"],
+                    range=Range(
+                        start=Position(**range_data["start"]),
+                        end=Position(**range_data["end"])
+                    )
+                )
+            # Otherwise it's a Location
+            return self._parse_location(item)
+
+        return None
+
+    async def find_references(
+        self,
+        file_uri: str,
+        line: int,
+        character: int,
+        include_declaration: bool = True
+    ) -> List[Location]:
+        """Find all references to symbol at position.
+
+        Args:
+            file_uri: URI of the document (e.g., "file:///path/to/file.kt")
+            line: Line number (0-indexed)
+            character: Character position (0-indexed)
+            include_declaration: Include the declaration in results
+
+        Returns:
+            List of reference locations
+
+        Raises:
+            RuntimeError: If client is not initialized
+
+        Example:
+            >>> references = await client.find_references(
+            ...     "file:///project/Repository.kt",
+            ...     line=15,
+            ...     character=10
+            ... )
+            >>> for ref in references:
+            ...     print(f"Reference at {ref.uri}:{ref.range.start.line}")
+        """
+        if not self._initialized:
+            raise RuntimeError("LSP client not initialized")
+
+        params = {
+            "textDocument": {"uri": file_uri},
+            "position": {"line": line, "character": character},
+            "context": {"includeDeclaration": include_declaration}
+        }
+
+        result = await self._send_request("textDocument/references", params)
+
+        if not result:
+            return []
+
+        return [self._parse_location(item) for item in result]
+
+    async def document_symbols(self, file_uri: str) -> List[SymbolInformation]:
+        """Get all symbols in a document.
+
+        Args:
+            file_uri: URI of the document (e.g., "file:///path/to/file.kt")
+
+        Returns:
+            List of symbol information for the document
+
+        Raises:
+            RuntimeError: If client is not initialized
+
+        Example:
+            >>> symbols = await client.document_symbols("file:///project/Repository.kt")
+            >>> for symbol in symbols:
+            ...     print(f"{symbol.name} ({symbol.kind}) at line {symbol.location.range.start.line}")
+        """
+        if not self._initialized:
+            raise RuntimeError("LSP client not initialized")
+
+        params = {"textDocument": {"uri": file_uri}}
+
+        result = await self._send_request("textDocument/documentSymbol", params)
+
+        if not result:
+            return []
+
+        # DocumentSymbol has a different structure than SymbolInformation
+        # We'll convert DocumentSymbol to SymbolInformation format
+        symbols = []
+        for item in result:
+            # Check if it's already SymbolInformation (has location)
+            if "location" in item:
+                symbols.append(SymbolInformation.from_dict(item))
+            # Otherwise it's DocumentSymbol (has range instead of location)
+            elif "range" in item:
+                range_data = item["range"]
+                symbols.append(SymbolInformation(
+                    name=item["name"],
+                    kind=item["kind"],
+                    location=Location(
+                        uri=file_uri,
+                        range=Range(
+                            start=Position(**range_data["start"]),
+                            end=Position(**range_data["end"])
+                        )
+                    ),
+                    containerName=item.get("containerName")
+                ))
+
+        return symbols
+
+    def _parse_location(self, data: Dict[str, Any]) -> Location:
+        """Parse Location from LSP response dictionary.
+
+        Args:
+            data: Dictionary with uri and range
+
+        Returns:
+            Location instance
+        """
+        range_data = data["range"]
+        return Location(
+            uri=data["uri"],
+            range=Range(
+                start=Position(**range_data["start"]),
+                end=Position(**range_data["end"])
+            )
+        )
+
     def is_running(self) -> bool:
         """Check if language server is running.
 

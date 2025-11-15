@@ -79,16 +79,16 @@ Project uses single project structure:
 
 ### Implementation for User Story 1
 
-- [ ] T027 [P] [US1] Implement Kotlin LSP server integration in src/kortex_mcp/lsp/kotlin_server.py (startup command, initialization params)
-- [ ] T028 [US1] Add workspace symbol search to LSP client in src/kortex_mcp/lsp/client.py (textDocument/documentSymbol request)
-- [ ] T029 [US1] Add go-to-definition support in src/kortex_mcp/lsp/client.py (textDocument/definition request)
-- [ ] T030 [US1] Add find references support in src/kortex_mcp/lsp/client.py (textDocument/references request)
-- [ ] T031 [US1] Implement symbol search MCP tool in src/kortex_mcp/tools/lsp_tools.py (async tool with query parameter)
-- [ ] T032 [US1] Implement go-to-definition MCP tool in src/kortex_mcp/tools/lsp_tools.py
-- [ ] T033 [US1] Implement find references MCP tool in src/kortex_mcp/tools/lsp_tools.py
-- [ ] T034 [US1] Register LSP tools with FastMCP server in src/kortex_mcp/server.py
-- [ ] T035 [US1] Add error handling and timeout logic to LSP tools in src/kortex_mcp/tools/lsp_tools.py
-- [ ] T036 [US1] Add comprehensive pydoc to all US1 functions and classes
+- [X] T027 [P] [US1] Implement Kotlin LSP server integration in src/kortex_mcp/lsp/kotlin_server.py (startup command, initialization params)
+- [X] T028 [US1] Add workspace symbol search to LSP client in src/kortex_mcp/lsp/client.py (textDocument/documentSymbol request)
+- [X] T029 [US1] Add go-to-definition support in src/kortex_mcp/lsp/client.py (textDocument/definition request)
+- [X] T030 [US1] Add find references support in src/kortex_mcp/lsp/client.py (textDocument/references request)
+- [X] T031 [US1] Implement symbol search MCP tool in src/kortex_mcp/tools/lsp_tools.py (async tool with query parameter)
+- [X] T032 [US1] Implement go-to-definition MCP tool in src/kortex_mcp/tools/lsp_tools.py
+- [X] T033 [US1] Implement find references MCP tool in src/kortex_mcp/tools/lsp_tools.py
+- [X] T034 [US1] Register LSP tools with FastMCP server in src/kortex_mcp/server.py
+- [X] T035 [US1] Add error handling and timeout logic to LSP tools in src/kortex_mcp/tools/lsp_tools.py
+- [X] T036 [US1] Add comprehensive pydoc to all US1 functions and classes
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - can search symbols and navigate code in KMP projects
 
