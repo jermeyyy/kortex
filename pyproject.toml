@@ -1,0 +1,32 @@
+[project]
+name = "kortex-mcp-server"
+version = "0.1.0"
+description = "MCP server for Kotlin Multiplatform and Compose Multiplatform coding assistant"
+requires-python = ">=3.10"
+
+dependencies = [
+    "fastmcp>=2.11.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kortex_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
