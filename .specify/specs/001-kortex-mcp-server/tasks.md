@@ -243,21 +243,21 @@ Project uses single project structure:
 
 ### Tests for User Story 4
 
-- [ ] T077 [P] [US4] Unit test for memory models in tests/test_models/test_models.py
-- [ ] T078 [P] [US4] Unit test for memory store operations in tests/test_storage/test_memory_store.py
-- [ ] T079 [P] [US4] Integration test for memory tools in tests/test_tools/test_memory_tools.py
-- [ ] T080 [P] [US4] Test memory retrieval and application in tests/test_tools/test_memory_tools.py
+- [X] T077 [P] [US4] Unit test for memory models in tests/test_models/test_models.py
+- [X] T078 [P] [US4] Unit test for memory store operations in tests/test_storage/test_memory_store.py
+- [X] T079 [P] [US4] Integration test for memory tools in tests/test_tools/test_memory_tools.py
+- [Z] T080 [P] [US4] Test memory retrieval and application in tests/test_tools/test_memory_tools.py
 
 ### Implementation for User Story 4
 
-- [ ] T081 [P] [US4] Implement memory category enum in src/kortex_mcp/models/memory.py (architecture, patterns, preferences, etc.)
-- [ ] T082 [US4] Add memory validation logic in src/kortex_mcp/models/memory.py (validate category, content)
-- [ ] T083 [US4] Implement memory CRUD operations in src/kortex_mcp/storage/memory_store.py (create, read, update, delete)
-- [ ] T084 [US4] Add memory search and filtering in src/kortex_mcp/storage/memory_store.py (by category, timestamp, content)
-- [ ] T085 [US4] Create memory management tools in src/kortex_mcp/tools/memory_tools.py (store_memory, query_memory, list_memories)
-- [ ] T086 [US4] Implement memory application logic in src/kortex_mcp/tools/memory_tools.py (apply memories to suggestions)
-- [ ] T087 [US4] Add memory timestamp tracking in src/kortex_mcp/storage/memory_store.py (created_at, last_accessed)
-- [ ] T088 [US4] Add comprehensive pydoc to all US4 functions and classes
+- [X] T081 [P] [US4] Implement memory category enum in src/kortex_mcp/models/memory.py (architecture, patterns, preferences, etc.)
+- [X] T082 [US4] Add memory validation logic in src/kortex_mcp/models/memory.py (validate category, content)
+- [X] T083 [US4] Implement memory CRUD operations in src/kortex_mcp/storage/memory_store.py (create, read, update, delete)
+- [X] T084 [US4] Add memory search and filtering in src/kortex_mcp/storage/memory_store.py (by category, timestamp, content)
+- [X] T085 [US4] Create memory management tools in src/kortex_mcp/tools/memory_tools.py (store_memory, query_memory, list_memories)
+- [X] T086 [US4] Implement memory application logic in src/kortex_mcp/tools/memory_tools.py (apply memories to suggestions)
+- [X] T087 [US4] Add memory timestamp tracking in src/kortex_mcp/storage/memory_store.py (created_at, last_accessed)
+- [X] T088 [US4] Add comprehensive pydoc to all US4 functions and classes
 
 **Checkpoint**: Memory system operational - can store and recall project knowledge
 
@@ -545,11 +545,11 @@ Before considering each phase complete:
 **Total P1 Tasks Complete**: 50/50 (100%)
 
 **US4 Complete When**:
-- [ ] Can store memory with category and retrieve it
-- [ ] Memories persist across sessions
-- [ ] Can query memories by category
-- [ ] Timestamp tracking working (created_at, last_accessed)
-- [ ] All tests passing, coverage ≥80%
+- [x] Can store memory with category and retrieve it
+- [x] Memories persist across sessions
+- [x] Can query memories by category
+- [x] Timestamp tracking working (created_at, last_accessed)
+- [x] All tests passing, coverage ≥80%
 
 **US5 Complete When**:
 - [ ] Can send question to user via ask_user tool
