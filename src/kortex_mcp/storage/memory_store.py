@@ -84,10 +84,8 @@ class MemoryStore:
         
         for file_path in memory_files:
             try:
-                # Read JSON file
-                data = await asyncio.to_thread(
-                    lambda: json.loads(file_path.read_text())
-                )
+                # Read JSON file (synchronous is fine for local files)
+                data = json.loads(file_path.read_text())
                 memory = Memory.from_dict(data)
                 self.memories[memory.id] = memory
             except Exception as e:
@@ -131,21 +129,27 @@ class MemoryStore:
             raise ValueError(f"Invalid memory: {', '.join(errors)}")
 
         async with self._lock:
-            # Save to disk
-            file_path = self._get_memory_path(memory.id)
-            data = memory.to_dict()
-            
-            try:
-                # Write JSON file
-                await asyncio.to_thread(
-                    lambda: file_path.write_text(json.dumps(data, indent=2))
-                )
-                # Update in-memory cache
-                self.memories[memory.id] = memory
-                logger.debug(f"Saved memory: {memory.id}")
-            except Exception as e:
-                logger.error(f"Failed to save memory {memory.id}: {e}")
-                raise IOError(f"Failed to save memory: {e}") from e
+            self._save_unlocked(memory)
+
+    def _save_unlocked(self, memory: Memory) -> None:
+        """Internal save method without locking (assumes lock is held).
+        
+        Args:
+            memory: Memory to save
+        """
+        # Save to disk
+        file_path = self._get_memory_path(memory.id)
+        data = memory.to_dict()
+        
+        try:
+            # Write JSON file (synchronous is fine for local files)
+            file_path.write_text(json.dumps(data, indent=2))
+            # Update in-memory cache
+            self.memories[memory.id] = memory
+            logger.debug(f"Saved memory: {memory.id}")
+        except Exception as e:
+            logger.error(f"Failed to save memory {memory.id}: {e}")
+            raise IOError(f"Failed to save memory: {e}") from e
 
     async def get(self, memory_id: str) -> Optional[Memory]:
         """Get a memory by ID.
@@ -169,8 +173,8 @@ class MemoryStore:
             if memory:
                 # Update access tracking
                 memory.update_access()
-                # Save updated memory
-                await self.save(memory)
+                # Save updated memory using internal method (lock already held)
+                self._save_unlocked(memory)
             
             return memory
 
