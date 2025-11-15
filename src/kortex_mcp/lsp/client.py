@@ -13,7 +13,8 @@ from asyncio.subprocess import Process
 from ..utils.logging import get_logger
 from ..models.lsp import (
     Position, Range, Location, TextDocumentIdentifier,
-    TextDocumentPositionParams, SymbolInformation, ReferenceParams
+    TextDocumentPositionParams, SymbolInformation, ReferenceParams,
+    TextEdit, WorkspaceEdit
 )
 
 
@@ -549,3 +550,187 @@ class LSPClient:
             ...     print("Server is ready")
         """
         return self.process is not None and self.process.returncode is None
+
+    async def rename_symbol(
+        self,
+        file_uri: str,
+        line: int,
+        character: int,
+        new_name: str
+    ) -> Optional[WorkspaceEdit]:
+        """Rename symbol at position using LSP.
+
+        Args:
+            file_uri: Document URI (file:// format)
+            line: Line number (0-based)
+            character: Character position (0-based)
+            new_name: New name for the symbol
+
+        Returns:
+            WorkspaceEdit with all rename changes, or None if not found
+
+        Raises:
+            RuntimeError: If LSP server is not running
+
+        Example:
+            >>> edit = await client.rename_symbol(
+            ...     "file:///project/MyClass.kt",
+            ...     line=10,
+            ...     character=15,
+            ...     new_name="NewClassName"
+            ... )
+            >>> if edit:
+            ...     # Apply the edit
+            ...     await client.apply_workspace_edit(edit)
+        """
+        if not self.is_running():
+            raise RuntimeError("LSP server is not running")
+
+        logger.info(f"Renaming symbol at {file_uri}:{line}:{character} to '{new_name}'")
+
+        result = await self._send_request(
+            method="textDocument/rename",
+            params={
+                "textDocument": {"uri": file_uri},
+                "position": {"line": line, "character": character},
+                "newName": new_name
+            }
+        )
+
+        if not result:
+            logger.warning(f"No rename result for symbol at {file_uri}:{line}:{character}")
+            return None
+
+        # Parse WorkspaceEdit from result
+        if "changes" in result:
+            changes = {}
+            for uri, edits in result["changes"].items():
+                text_edits = []
+                for edit_data in edits:
+                    range_data = edit_data["range"]
+                    text_edit = TextEdit(
+                        range=Range(
+                            start=Position(**range_data["start"]),
+                            end=Position(**range_data["end"])
+                        ),
+                        newText=edit_data["newText"]
+                    )
+                    text_edits.append(text_edit)
+                changes[uri] = text_edits
+
+            workspace_edit = WorkspaceEdit(changes=changes)
+            logger.info(f"Rename will affect {len(changes)} file(s)")
+            return workspace_edit
+
+        return None
+
+    async def apply_workspace_edit(self, edit: WorkspaceEdit) -> bool:
+        """Apply workspace edit to files.
+
+        Args:
+            edit: WorkspaceEdit with changes to apply
+
+        Returns:
+            True if edit was applied successfully
+
+        Raises:
+            RuntimeError: If LSP server is not running
+            IOError: If file operations fail
+
+        Example:
+            >>> workspace_edit = WorkspaceEdit(changes={...})
+            >>> success = await client.apply_workspace_edit(workspace_edit)
+        """
+        if not self.is_running():
+            raise RuntimeError("LSP server is not running")
+
+        logger.info(f"Applying workspace edit to {len(edit.changes)} file(s)")
+
+        try:
+            # Send workspace/applyEdit request to server
+            result = await self._send_request(
+                method="workspace/applyEdit",
+                params={
+                    "edit": edit.to_dict()
+                }
+            )
+
+            if result and result.get("applied", False):
+                logger.info("Workspace edit applied successfully")
+                return True
+            else:
+                failure_reason = result.get("failureReason", "Unknown") if result else "No response"
+                logger.error(f"Workspace edit failed: {failure_reason}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error applying workspace edit: {e}")
+            raise IOError(f"Failed to apply workspace edit: {e}") from e
+
+    async def did_change_document(
+        self,
+        file_uri: str,
+        content: str,
+        version: int = 1
+    ) -> None:
+        """Notify LSP server of document content change.
+
+        Args:
+            file_uri: Document URI (file:// format)
+            content: Full new content of the document
+            version: Document version number (increments with each change)
+
+        Raises:
+            RuntimeError: If LSP server is not running
+
+        Example:
+            >>> await client.did_change_document(
+            ...     "file:///project/MyClass.kt",
+            ...     new_content,
+            ...     version=2
+            ... )
+        """
+        if not self.is_running():
+            raise RuntimeError("LSP server is not running")
+
+        logger.debug(f"Sending textDocument/didChange for {file_uri} (v{version})")
+
+        # Send textDocument/didChange notification (no response expected)
+        await self.notify(
+            method="textDocument/didChange",
+            params={
+                "textDocument": {
+                    "uri": file_uri,
+                    "version": version
+                },
+                "contentChanges": [
+                    {
+                        "text": content
+                    }
+                ]
+            }
+        )
+
+    async def notify(self, method: str, params: Dict[str, Any]) -> None:
+        """Send JSON-RPC notification (no response expected).
+
+        Args:
+            method: LSP method name
+            params: Method parameters
+
+        Raises:
+            RuntimeError: If LSP server is not running
+
+        Example:
+            >>> await client.notify("textDocument/didOpen", {...})
+        """
+        if not self.is_running():
+            raise RuntimeError("LSP server is not running")
+
+        message = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params
+        }
+
+        await self._write_message(message)
