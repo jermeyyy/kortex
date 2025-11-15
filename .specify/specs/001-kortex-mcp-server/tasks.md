@@ -440,12 +440,12 @@ All converge for Polish phase.
 Before considering each phase complete:
 
 ### Phase 2 (Foundation) Checklist
-- [ ] All base models defined with full type hints and pydoc
-- [ ] LSP client can start/stop/restart Kotlin language server
-- [ ] Memory store can save and load JSON files
-- [ ] FastMCP server initializes without errors
-- [ ] All 80+ type hints verified with mypy
-- [ ] Test fixtures include valid KMP project structure
+- [X] All base models defined with full type hints and pydoc
+- [X] LSP client can start/stop/restart Kotlin language server
+- [X] Memory store can save and load JSON files
+- [X] FastMCP server initializes without errors
+- [X] All 80+ type hints verified with mypy
+- [X] Test fixtures include valid KMP project structure
 
 ### User Story Checkpoints
 
