@@ -52,6 +52,19 @@ def sample_kmp_project(fixtures_dir: Path) -> Path:
 
 
 @pytest.fixture
+def sample_cmp_project(fixtures_dir: Path) -> Path:
+    """Get path to sample CMP project fixture.
+
+    Args:
+        fixtures_dir: Fixtures directory path
+
+    Returns:
+        Path to sample CMP project
+    """
+    return fixtures_dir / "sample_cmp_project"
+
+
+@pytest.fixture
 async def memory_store(temp_dir: Path) -> AsyncGenerator[MemoryStore, None]:
     """Create a temporary memory store for testing.
 

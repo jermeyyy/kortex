@@ -1,0 +1,118 @@
+{
+  "name": "SampleKMPProject",
+  "root_path": "/Users/jermey/Projects/kortex/tests/fixtures/sample_kmp_project",
+  "type": "kmp",
+  "source_sets": {
+    "commonMain": {
+      "name": "commonMain",
+      "type": "common",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [
+        "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0"
+      ],
+      "depends_on": []
+    },
+    "commonTest": {
+      "name": "commonTest",
+      "type": "common",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [
+        "kotlin-test"
+      ],
+      "depends_on": []
+    },
+    "androidMain": {
+      "name": "androidMain",
+      "type": "android",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [
+        "androidx.core:core-ktx:1.12.0"
+      ],
+      "depends_on": []
+    },
+    "iosMain": {
+      "name": "iosMain",
+      "type": "ios",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [],
+      "depends_on": [
+        "commonMain"
+      ]
+    },
+    "iosX64Main": {
+      "name": "iosX64Main",
+      "type": "ios",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [],
+      "depends_on": [
+        "iosMain"
+      ]
+    },
+    "iosArm64Main": {
+      "name": "iosArm64Main",
+      "type": "ios",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [],
+      "depends_on": [
+        "iosMain"
+      ]
+    },
+    "iosSimulatorArm64Main": {
+      "name": "iosSimulatorArm64Main",
+      "type": "ios",
+      "source_dirs": [],
+      "resource_dirs": [],
+      "dependencies": [],
+      "depends_on": [
+        "iosMain"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "name": "android",
+      "platform": "android",
+      "source_sets": [
+        "commonMain",
+        "androidMain"
+      ]
+    },
+    {
+      "name": "iosX64",
+      "platform": "ios",
+      "source_sets": [
+        "commonMain",
+        "iosMain"
+      ]
+    },
+    {
+      "name": "iosArm64",
+      "platform": "ios",
+      "source_sets": [
+        "commonMain",
+        "iosMain"
+      ]
+    },
+    {
+      "name": "iosSimulatorArm64",
+      "platform": "ios",
+      "source_sets": [
+        "commonMain",
+        "iosMain"
+      ]
+    }
+  ],
+  "gradle_version": null,
+  "kotlin_version": null,
+  "compose_version": null,
+  "build_files": [
+    "/Users/jermey/Projects/kortex/tests/fixtures/sample_kmp_project/build.gradle.kts"
+  ]
+}
