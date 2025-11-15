@@ -72,10 +72,10 @@ Project uses single project structure:
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T023 [P] [US1] Unit test for LSP client initialization in tests/test_lsp/test_client.py
-- [ ] T024 [P] [US1] Unit test for workspace symbol search in tests/test_lsp/test_client.py
-- [ ] T025 [P] [US1] Integration test for symbol search tool in tests/test_tools/test_lsp_tools.py
-- [ ] T026 [P] [US1] Integration test for find references tool in tests/test_tools/test_lsp_tools.py
+- [X] T023 [P] [US1] Unit test for LSP client initialization in tests/test_lsp/test_client.py
+- [X] T024 [P] [US1] Unit test for workspace symbol search in tests/test_lsp/test_client.py
+- [X] T025 [P] [US1] Integration test for symbol search tool in tests/test_tools/test_lsp_tools.py
+- [X] T026 [P] [US1] Integration test for find references tool in tests/test_tools/test_lsp_tools.py
 
 ### Implementation for User Story 1
 
