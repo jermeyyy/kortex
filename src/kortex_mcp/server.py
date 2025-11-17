@@ -8,13 +8,14 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 from .utils.logging import get_logger
 from .lsp.manager import LSPManager
 from .storage.memory_store import MemoryStore
 from .storage.project_store import ProjectStore
 from .tools.lsp_tools import LSPTools
+from .tools import elicitation_tools
 
 
 logger = get_logger(__name__)
@@ -259,6 +260,81 @@ async def find_references(
     await ensure_initialized()
     tools = get_lsp_tools()
     return await tools.find_references(file, line, character, include_declaration, language)
+
+
+# ===== User Elicitation Tool Endpoints =====
+
+@mcp.tool()
+async def ask_open_ended(ctx: Context, question: str) -> str:
+    """Request information from user in natural language.
+    
+    Asks a free-form question and collects the user's response.
+    This is useful for gathering detailed information, explanations,
+    or clarifications that don't fit into predefined options.
+    
+    Use this tool when you need:
+    - Detailed explanations or descriptions
+    - User preferences or opinions
+    - Technical specifications or requirements
+    - Any information that can't be captured by multiple choice
+    
+    Args:
+        question: Detailed but brief question to ask the user
+        
+    Returns:
+        String with the result:
+        - "User provided: {response}" if the user answered
+        - "User declined to provide information" if declined
+        - "Request cancelled by user" if cancelled
+        
+    Example:
+        >>> # During a feature planning conversation
+        >>> result = await ask_open_ended(
+        ...     ctx,
+        ...     "What should the authentication timeout be and why?"
+        ... )
+        >>> # Returns: "User provided: 30 minutes for better UX on slow networks"
+    """
+    return await elicitation_tools.ask_open_ended(ctx, question)
+
+
+@mcp.tool()
+async def ask_single_select(
+    ctx: Context,
+    question: str,
+    options: List[str]
+) -> str:
+    """Ask user to select one option from provided choices.
+    
+    Presents the user with multiple options and asks them to select one.
+    This is useful for choices between known alternatives.
+    
+    Use this tool when you need to:
+    - Choose between framework options (e.g., Koin vs Hilt)
+    - Select architecture patterns (e.g., MVVM vs MVI)
+    - Pick implementation approaches
+    - Make decisions between well-defined alternatives
+    
+    Args:
+        question: Detailed but brief question to ask the user
+        options: List of detailed but brief options for the user to choose from
+        
+    Returns:
+        String with the result:
+        - "Selected: {option}" if the user made a selection
+        - "User declined to select an option" if declined
+        - "Selection cancelled by user" if cancelled
+        
+    Example:
+        >>> # During architecture planning
+        >>> result = await ask_single_select(
+        ...     ctx,
+        ...     "Which dependency injection framework should we use?",
+        ...     ["Koin", "Kodein", "Hilt", "Manual DI"]
+        ... )
+        >>> # Returns: "Selected: Koin"
+    """
+    return await elicitation_tools.ask_single_select(ctx, question, options)
 
 
 if __name__ == "__main__":
