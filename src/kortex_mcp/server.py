@@ -14,7 +14,9 @@ from .utils.logging import get_logger
 from .lsp.manager import LSPManager
 from .storage.memory_store import MemoryStore
 from .storage.project_store import ProjectStore
+from .storage.spec_store import SpecStore
 from .tools.lsp_tools import LSPTools
+from .tools.planning_tools import PlanningTools
 from .tools import elicitation_tools
 
 
@@ -29,17 +31,19 @@ mcp = FastMCP("Kortex")
 _lsp_manager: Optional[LSPManager] = None
 _memory_store: Optional[MemoryStore] = None
 _project_store: Optional[ProjectStore] = None
+_spec_store: Optional[SpecStore] = None
 _lsp_tools: Optional[LSPTools] = None
+_planning_tools: Optional[PlanningTools] = None
 _initialized = False
 
 
 async def initialize_server() -> None:
     """Initialize server components.
 
-    Sets up LSP manager, memory store, and project store.
+    Sets up LSP manager, memory store, project store, spec store, and planning tools.
     Should be called before using any server functionality.
     """
-    global _lsp_manager, _memory_store, _project_store, _lsp_tools, _initialized
+    global _lsp_manager, _memory_store, _project_store, _spec_store, _lsp_tools, _planning_tools, _initialized
     
     if _initialized:
         return
@@ -68,6 +72,16 @@ async def initialize_server() -> None:
         # Initialize LSP tools
         _lsp_tools = LSPTools(_lsp_manager)
         logger.info("LSP tools initialized")
+        
+        # Initialize spec store
+        spec_store_path = Path.home() / ".kortex" / "specs"
+        _spec_store = SpecStore(spec_store_path)
+        logger.info(f"Spec store configured at {spec_store_path}")
+        
+        # Initialize planning tools
+        _planning_tools = PlanningTools(project_root=Path.cwd())
+        await _planning_tools.initialize()
+        logger.info("Planning tools initialized")
         
         _initialized = True
         logger.info("Kortex server initialization complete")
@@ -163,6 +177,20 @@ def get_lsp_tools() -> LSPTools:
     if _lsp_tools is None:
         raise RuntimeError("Server not initialized. Call initialize_server() first.")
     return _lsp_tools
+
+
+def get_planning_tools() -> PlanningTools:
+    """Get the global planning tools instance.
+
+    Returns:
+        Planning tools instance
+
+    Raises:
+        RuntimeError: If server not initialized
+    """
+    if _planning_tools is None:
+        raise RuntimeError("Server not initialized. Call initialize_server() first.")
+    return _planning_tools
 
 
 # ===== MCP Tool Endpoints =====
@@ -335,6 +363,273 @@ async def ask_single_select(
         >>> # Returns: "Selected: Koin"
     """
     return await elicitation_tools.ask_single_select(ctx, question, options)
+
+
+# ===== Planning Tool Endpoints =====
+
+@mcp.tool()
+async def create_spec(
+    spec_id: str,
+    title: str,
+    description: str,
+    user_stories: Optional[List[Dict[str, Any]]] = None,
+    requirements: Optional[List[Dict[str, Any]]] = None,
+    open_questions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Create a new specification for Planning Mode.
+    
+    Creates a new specification with the provided information. Use this tool
+    to document features or changes through conversation with the user.
+    
+    The spec_id must follow the format SPEC-XXX (e.g., SPEC-001, SPEC-042).
+    After creation, you can refine the spec by adding more details.
+    
+    Args:
+        spec_id: Unique specification ID (format: SPEC-XXX)
+        title: Specification title (e.g., "User Authentication")
+        description: High-level description of the feature
+        user_stories: Optional list of user story dicts with fields:
+            - id: Story ID (e.g., "US-001")
+            - title: Story title
+            - description: Story description
+            - priority: "P1" (high), "P2" (medium), or "P3" (low)
+            - acceptance_criteria: List of criteria strings (optional)
+            - status: "draft", "in_progress", "completed" (optional)
+        requirements: Optional list of requirement dicts with fields:
+            - id: Requirement ID (e.g., "REQ-001")
+            - type: "functional", "non_functional", "technical" (optional)
+            - description: Requirement description
+            - rationale: Why this requirement exists (optional)
+            - status: "draft", "approved", "implemented" (optional)
+        open_questions: Optional list of questions that need answers during refinement.
+            Use elicitation tools (ask_open_ended, ask_single_select) to get answers
+            from the user, then use refine_spec to add more details.
+        
+    Returns:
+        Dictionary with creation result:
+        - success: Whether creation succeeded
+        - spec_id: The specification ID
+        - title: The specification title
+        - path: Path to the spec file
+        - user_stories_count: Number of user stories
+        - requirements_count: Number of requirements
+        - open_questions_count: Number of open questions
+        
+    Example:
+        >>> result = await create_spec(
+        ...     spec_id="SPEC-001",
+        ...     title="User Authentication",
+        ...     description="Add OAuth2 authentication to the app",
+        ...     open_questions=[
+        ...         "What OAuth2 provider should we use?",
+        ...         "Should we support offline mode?"
+        ...     ]
+        ... )
+    """
+    await ensure_initialized()
+    tools = get_planning_tools()
+    return await tools.create_spec(
+        spec_id=spec_id,
+        title=title,
+        description=description,
+        user_stories=user_stories,
+        requirements=requirements,
+        open_questions=open_questions,
+    )
+
+
+@mcp.tool()
+async def refine_spec(
+    spec_id: str,
+    description: Optional[str] = None,
+    user_stories: Optional[List[Dict[str, Any]]] = None,
+    requirements: Optional[List[Dict[str, Any]]] = None,
+    open_questions: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Refine an existing specification with new information.
+    
+    Adds or updates information in an existing specification. Use this to
+    incrementally build out the specification through conversation.
+    
+    At least one field must be provided. New items are appended to existing lists.
+    If description is provided, it replaces the existing description.
+    
+    When you see open questions in a spec, use elicitation tools to gather
+    answers from the user, then update the spec with the answers.
+    
+    Args:
+        spec_id: Specification ID to refine
+        description: Updated description (replaces existing, optional)
+        user_stories: User stories to add (see create_spec for format, optional)
+        requirements: Requirements to add (see create_spec for format, optional)
+        open_questions: Questions to add to the open questions list (optional)
+        
+    Returns:
+        Dictionary with refinement result:
+        - success: Whether refinement succeeded
+        - spec_id: The specification ID
+        - updated_fields: List of fields that were updated
+        - user_stories_count: Total number of user stories
+        - requirements_count: Total number of requirements
+        - open_questions_count: Total number of open questions
+        
+    Example:
+        >>> # After getting answer from user via ask_open_ended
+        >>> result = await refine_spec(
+        ...     spec_id="SPEC-001",
+        ...     user_stories=[{
+        ...         "id": "US-002",
+        ...         "title": "User Logout",
+        ...         "description": "As a user, I want to log out securely",
+        ...         "priority": "P2"
+        ...     }]
+        ... )
+    """
+    await ensure_initialized()
+    tools = get_planning_tools()
+    return await tools.refine_spec(
+        spec_id=spec_id,
+        description=description,
+        user_stories=user_stories,
+        requirements=requirements,
+        open_questions=open_questions,
+    )
+
+
+@mcp.tool()
+async def generate_template(
+    spec_id: str,
+    title: str,
+    sections: Optional[List[str]] = None,
+    platform_sections: Optional[Dict[str, List[str]]] = None,
+    save_to_disk: bool = False,
+) -> Dict[str, Any]:
+    """Generate a SpecKit-compliant specification template.
+    
+    Creates a Markdown template with standard sections for specification
+    development. Optionally includes platform-specific sections for KMP projects.
+    
+    This is useful for starting a new specification with a standard structure.
+    
+    Args:
+        spec_id: Specification ID for the template
+        title: Specification title
+        sections: Optional list of sections to include. Default sections:
+            ["description", "user_stories", "requirements"]
+            Other available sections: "acceptance_criteria"
+        platform_sections: Optional dict mapping platform names to section lists.
+            Example: {"android": ["Firebase setup"], "ios": ["APNs setup"]}
+        save_to_disk: Whether to save template to disk immediately (default: False)
+        
+    Returns:
+        Dictionary with template result:
+        - success: True
+        - spec_id: The specification ID
+        - template: The generated template as Markdown string
+        - sections: List of sections included
+        - path: Path to saved file (if save_to_disk=True)
+        
+    Example:
+        >>> result = await generate_template(
+        ...     spec_id="SPEC-002",
+        ...     title="Push Notifications",
+        ...     platform_sections={
+        ...         "android": ["Firebase setup", "Notification channels"],
+        ...         "ios": ["APNs setup", "Notification permissions"]
+        ...     },
+        ...     save_to_disk=True
+        ... )
+    """
+    await ensure_initialized()
+    tools = get_planning_tools()
+    return await tools.generate_template(
+        spec_id=spec_id,
+        title=title,
+        sections=sections,
+        platform_sections=platform_sections,
+        save_to_disk=save_to_disk,
+    )
+
+
+@mcp.tool()
+async def detect_dependencies(
+    spec_id: str,
+) -> Dict[str, Any]:
+    """Detect dependencies between specifications.
+    
+    Finds other specifications that this spec depends on or that depend
+    on this spec. Detects both explicit references (SPEC-XXX IDs) and
+    shared concepts (common keywords).
+    
+    Use this to understand how specifications relate to each other and
+    identify potential circular dependencies.
+    
+    Args:
+        spec_id: Specification ID to analyze
+        
+    Returns:
+        Dictionary with dependency detection results:
+        - success: True
+        - spec_id: The specification ID
+        - dependencies: List of spec IDs this spec depends on
+        - shared_concepts: List of specs with shared concepts
+        - circular_dependencies: List of circular dependency chains (if any)
+        
+    Example:
+        >>> result = await detect_dependencies(spec_id="SPEC-002")
+        >>> if result["dependencies"]:
+        ...     print(f"Depends on: {result['dependencies']}")
+        >>> if result["circular_dependencies"]:
+        ...     print(f"Warning: Circular dependency detected!")
+    """
+    await ensure_initialized()
+    tools = get_planning_tools()
+    return await tools.detect_dependencies(spec_id=spec_id)
+
+
+@mcp.tool()
+async def generate_tasks(
+    spec_id: str,
+    save_to_disk: bool = False,
+) -> Dict[str, Any]:
+    """Generate actionable tasks from a specification.
+    
+    Breaks down the specification into concrete tasks organized by user story.
+    Tasks inherit priority from their user story. Use this to convert a
+    specification into implementation tasks.
+    
+    Args:
+        spec_id: Specification ID to generate tasks from
+        save_to_disk: Whether to save tasks.md file to disk (default: False)
+        
+    Returns:
+        Dictionary with task generation results:
+        - success: True
+        - spec_id: The specification ID
+        - tasks: List of task dictionaries with:
+            - id: Task ID (T001, T002, etc.)
+            - title: Task title
+            - description: Task description
+            - priority: Priority (from user story)
+            - user_story_id: Related user story ID (if applicable)
+            - requirement_id: Related requirement ID (if applicable)
+        - path: Path to tasks.md file (if save_to_disk=True)
+        
+    Example:
+        >>> result = await generate_tasks(
+        ...     spec_id="SPEC-001",
+        ...     save_to_disk=True
+        ... )
+        >>> print(f"Generated {len(result['tasks'])} tasks")
+        >>> for task in result['tasks']:
+        ...     print(f"  {task['id']}: {task['title']}")
+    """
+    await ensure_initialized()
+    tools = get_planning_tools()
+    return await tools.generate_tasks(
+        spec_id=spec_id,
+        save_to_disk=save_to_disk,
+    )
 
 
 if __name__ == "__main__":

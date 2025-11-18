@@ -275,7 +275,7 @@ class Specification:
         description: High-level description
         user_stories: List of user stories
         requirements: List of requirements
-        elicitation_questions: Questions asked during planning
+        open_questions: Questions that need answers during refinement
         status: Specification status
         created_at: Creation timestamp
         updated_at: Last update timestamp
@@ -295,7 +295,7 @@ class Specification:
     description: str
     user_stories: List[UserStory] = field(default_factory=list)
     requirements: List[Requirement] = field(default_factory=list)
-    elicitation_questions: List[ElicitationQuestion] = field(default_factory=list)
+    open_questions: List[str] = field(default_factory=list)
     status: str = "draft"
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
@@ -335,7 +335,7 @@ class Specification:
                 }
                 for r in self.requirements
             ],
-            "elicitation_questions": [q.to_dict() for q in self.elicitation_questions],
+            "open_questions": self.open_questions,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),

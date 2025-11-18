@@ -348,11 +348,6 @@ class TestSpecification:
             type="functional",
             description="Requirement A",
         )
-        question = ElicitationQuestion(
-            question="Which approach?",
-            question_type=QuestionType.SINGLE_SELECT,
-            options=["A", "B"],
-        )
         
         spec = Specification(
             id="SPEC-001",
@@ -360,14 +355,14 @@ class TestSpecification:
             description="Add user authentication",
             user_stories=[story],
             requirements=[req],
-            elicitation_questions=[question],
+            open_questions=["Which OAuth2 provider should we use?"],
         )
         
         assert spec.id == "SPEC-001"
         assert spec.title == "Authentication Feature"
         assert len(spec.user_stories) == 1
         assert len(spec.requirements) == 1
-        assert len(spec.elicitation_questions) == 1
+        assert len(spec.open_questions) == 1
 
     def test_specification_to_dict(self):
         """Test converting specification to dictionary."""
@@ -402,7 +397,7 @@ class TestSpecification:
         
         assert spec.user_stories == []
         assert spec.requirements == []
-        assert spec.elicitation_questions == []
+        assert spec.open_questions == []
         assert spec.status == "draft"
 
 
