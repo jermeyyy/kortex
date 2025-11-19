@@ -4,17 +4,17 @@ Tests project initialization, project info queries, and LSP server
 startup based on detected project configuration.
 """
 
-import pytest
 from pathlib import Path
-from typing import Dict, Any
 
+import pytest
+
+from kortex_mcp.models.project import ProjectType
+from kortex_mcp.storage.project_store import ProjectStore
 from kortex_mcp.tools.project_tools import (
-    onboard_project,
     get_project_info,
     initialize_lsp_servers,
+    onboard_project,
 )
-from kortex_mcp.models.project import Project, ProjectType
-from kortex_mcp.storage.project_store import ProjectStore
 
 
 class TestProjectOnboarding:
@@ -28,7 +28,7 @@ class TestProjectOnboarding:
             sample_kmp_project: Path to sample KMP project fixture
         """
         result = await onboard_project(sample_kmp_project)
-        
+
         assert result is not None
         assert "success" in result or "project" in result
 
@@ -42,7 +42,7 @@ class TestProjectOnboarding:
             sample_kmp_project: Path to sample KMP project fixture
         """
         result = await onboard_project(sample_kmp_project)
-        
+
         # Should include project type, name, and source sets
         if isinstance(result, dict):
             assert "type" in result or "project_type" in result
@@ -58,7 +58,7 @@ class TestProjectOnboarding:
             sample_kmp_project: Path to sample KMP project fixture
         """
         result = await onboard_project(sample_kmp_project)
-        
+
         # Project should be detected as KMP
         project_type = result.get("type") or result.get("project_type")
         assert project_type == ProjectType.KMP or project_type == "kmp"
@@ -75,11 +75,11 @@ class TestProjectOnboarding:
         """
         # Onboard the project
         await onboard_project(sample_kmp_project)
-        
+
         # Check that config was stored
         store = ProjectStore(temp_dir / "project.json")
         project = await store.load()
-        
+
         if project:
             assert project.name is not None
 
@@ -93,11 +93,11 @@ class TestProjectOnboarding:
             sample_kmp_project: Path to sample KMP project fixture
         """
         import time
-        
+
         start = time.time()
         result = await onboard_project(sample_kmp_project)
         duration = time.time() - start
-        
+
         assert result is not None
         # Should complete in less than 30 seconds as per requirements
         assert duration < 30.0
@@ -115,10 +115,10 @@ class TestGetProjectInfo:
         """
         # First onboard the project
         await onboard_project(sample_kmp_project)
-        
+
         # Then query project info
         info = await get_project_info(sample_kmp_project)
-        
+
         assert info is not None
 
     @pytest.mark.asyncio
@@ -132,7 +132,7 @@ class TestGetProjectInfo:
         """
         await onboard_project(sample_kmp_project)
         info = await get_project_info(sample_kmp_project)
-        
+
         assert "targets" in info
         assert len(info["targets"]) > 0
 
@@ -147,7 +147,7 @@ class TestGetProjectInfo:
         """
         await onboard_project(sample_kmp_project)
         info = await get_project_info(sample_kmp_project)
-        
+
         assert "source_sets" in info
         assert len(info["source_sets"]) > 0
         # Should have commonMain
@@ -165,7 +165,7 @@ class TestGetProjectInfo:
         """
         await onboard_project(sample_kmp_project)
         info = await get_project_info(sample_kmp_project)
-        
+
         assert "dependencies" in info or "source_sets" in info
         # Dependencies might be nested in source sets
 
@@ -180,7 +180,7 @@ class TestGetProjectInfo:
         """
         # Should either auto-onboard or return error/empty result
         info = await get_project_info(sample_kmp_project)
-        
+
         # Should handle gracefully (either with data or clear error)
         assert info is not None
 
@@ -198,10 +198,10 @@ class TestLSPServerInitialization:
             sample_kmp_project: Path to sample KMP project fixture
         """
         await onboard_project(sample_kmp_project)
-        
+
         # Initialize LSP servers
         result = await initialize_lsp_servers(sample_kmp_project)
-        
+
         assert result is not None
         # Should indicate which servers were started
 
@@ -214,7 +214,7 @@ class TestLSPServerInitialization:
         """
         await onboard_project(sample_kmp_project)
         result = await initialize_lsp_servers(sample_kmp_project)
-        
+
         # Should attempt to start Kotlin language server
         # (may be in servers if executable found, or failed if not)
         if isinstance(result, dict):
@@ -237,7 +237,7 @@ class TestLSPServerInitialization:
         """
         await onboard_project(sample_kmp_project)
         result = await initialize_lsp_servers(sample_kmp_project)
-        
+
         # Should start Swift LSP if iOS target detected
         if isinstance(result, dict):
             servers = result.get("servers", [])
@@ -254,10 +254,10 @@ class TestLSPServerInitialization:
             sample_kmp_project: Path to sample KMP project fixture
         """
         await onboard_project(sample_kmp_project)
-        
+
         # Should not crash if servers aren't available
         result = await initialize_lsp_servers(sample_kmp_project)
-        
+
         assert result is not None
         # Should report which servers failed to start
 
@@ -277,11 +277,11 @@ class TestProjectStoreIntegration:
         """
         # Onboard project (stores in project_dir/.kortex/project.json)
         await onboard_project(sample_kmp_project)
-        
+
         # Load from the location where onboard_project stored it
         store_path = sample_kmp_project / ".kortex" / "project.json"
         store = ProjectStore(store_path)
-        
+
         # Should be able to load from store
         project = await store.load()
         assert project is not None
@@ -296,18 +296,18 @@ class TestProjectStoreIntegration:
             sample_kmp_project: Path to sample KMP project fixture
             temp_dir: Temporary directory for test data
         """
-        store = ProjectStore(temp_dir)
-        
+        ProjectStore(temp_dir)
+
         # Onboard project first time
         await onboard_project(sample_kmp_project)
-        
+
         # Get project info - should use cached data
         info1 = await get_project_info(sample_kmp_project)
-        
+
         # Onboard again - should update cache
         await onboard_project(sample_kmp_project)
         info2 = await get_project_info(sample_kmp_project)
-        
+
         # Both should return valid data
         assert info1 is not None
         assert info2 is not None
@@ -334,7 +334,7 @@ plugins {
 kotlin {
     android()
     ios()
-    
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -346,9 +346,9 @@ kotlin {
     }
 }
         """)
-        
+
         result = await onboard_project(tmp_path)
-        
+
         assert result is not None
         # Should detect as CMP
         project_type = result.get("type") or result.get("project_type")
@@ -371,10 +371,10 @@ plugins {
     id("org.jetbrains.compose") version "1.5.10"
 }
         """)
-        
+
         await onboard_project(tmp_path)
         info = await get_project_info(tmp_path)
-        
+
         # Should include compose version info
         assert info is not None
         # May be in "compose_version" or nested in plugins
@@ -387,7 +387,7 @@ class TestErrorHandling:
     async def test_onboard_nonexistent_project(self) -> None:
         """Test onboarding a non-existent project directory."""
         nonexistent = Path("/nonexistent/project")
-        
+
         with pytest.raises(FileNotFoundError):
             await onboard_project(nonexistent)
 
@@ -400,7 +400,7 @@ class TestErrorHandling:
         """
         # Should handle gracefully - may return UNKNOWN project type
         result = await onboard_project(tmp_path)
-        
+
         assert result is not None
         # Should indicate it's not a valid KMP/CMP project
 
@@ -420,9 +420,9 @@ plugins {
     kotlin("jvm") version "1.9.20"
 }
         """)
-        
+
         info = await get_project_info(tmp_path)
-        
+
         # Should return info indicating it's not KMP/CMP
         assert info is not None
 
@@ -444,14 +444,14 @@ rootProject.name = "MultiModule"
 include(":shared")
 include(":app")
         """)
-        
+
         # Root build file
         (tmp_path / "build.gradle.kts").write_text("""
 plugins {
     kotlin("multiplatform") version "1.9.20" apply false
 }
         """)
-        
+
         # Shared module
         shared = tmp_path / "shared"
         shared.mkdir()
@@ -465,9 +465,9 @@ kotlin {
     ios()
 }
         """)
-        
+
         result = await onboard_project(tmp_path)
-        
+
         assert result is not None
         # Should detect as KMP project
 
@@ -484,17 +484,17 @@ kotlin {
 include(":shared")
 include(":app")
         """)
-        
+
         shared = tmp_path / "shared"
         shared.mkdir()
         (shared / "build.gradle.kts").write_text("// Shared module")
-        
+
         app = tmp_path / "app"
         app.mkdir()
         (app / "build.gradle.kts").write_text("// App module")
-        
+
         await onboard_project(tmp_path)
         info = await get_project_info(tmp_path)
-        
+
         # Should list modules
         assert info is not None

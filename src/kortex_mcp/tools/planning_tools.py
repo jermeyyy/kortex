@@ -14,17 +14,14 @@ Phase 9: Tasks T104-T108
 """
 
 import re
-from pathlib import Path
-from typing import List, Optional, Dict, Any, Set
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
-from ..models.specification import (
-    Specification, UserStory, Requirement
-)
+from ..models.specification import Requirement, Specification, UserStory
 from ..storage.spec_store import SpecStore
-from ..utils.logging import get_logger
 from ..utils.file_utils import ensure_directory
-
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -62,7 +59,7 @@ class PlanningTools:
         """
         self.project_root = project_root
         self.spec_path = project_root / ".kortex" / "specs"
-        self.spec_store: Optional[SpecStore] = None
+        self.spec_store: SpecStore | None = None
         self._initialized = False
 
     async def initialize(self) -> None:
@@ -94,10 +91,10 @@ class PlanningTools:
         spec_id: str,
         title: str,
         description: str,
-        user_stories: Optional[List[Dict[str, Any]]] = None,
-        requirements: Optional[List[Dict[str, Any]]] = None,
-        open_questions: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        user_stories: list[dict[str, Any]] | None = None,
+        requirements: list[dict[str, Any]] | None = None,
+        open_questions: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Create a new specification.
 
         Creates a new specification with the provided information. The spec
@@ -154,9 +151,12 @@ class PlanningTools:
             raise ValueError("Title cannot be empty")
 
         # Check if spec already exists
-        existing = await self.spec_store.get(spec_id)
-        if existing:
-            raise ValueError(f"Specification {spec_id} already exists")
+        if self.spec_store:
+            existing = await self.spec_store.get(spec_id)
+            if existing:
+                raise ValueError(f"Specification {spec_id} already exists")
+        else:
+            raise RuntimeError("Spec store not initialized")
 
         # Parse user stories
         stories = []
@@ -198,7 +198,13 @@ class PlanningTools:
         )
 
         # Save to storage
-        await self.spec_store.save(spec)
+        if self.spec_store:
+            await self.spec_store.save(spec)
+
+            # Get path for response
+            spec_path = str(self.spec_store._get_spec_file(spec_id))
+        else:
+            raise RuntimeError("Spec store not initialized")
 
         logger.info(f"Created specification: {spec_id}")
 
@@ -207,7 +213,7 @@ class PlanningTools:
             "action": "created",
             "spec_id": spec_id,
             "title": title,
-            "path": str(self.spec_store._get_spec_file(spec_id)),
+            "path": spec_path,
             "user_stories_count": len(stories),
             "requirements_count": len(reqs),
             "open_questions_count": len(questions),
@@ -216,11 +222,11 @@ class PlanningTools:
     async def refine_spec(
         self,
         spec_id: str,
-        description: Optional[str] = None,
-        user_stories: Optional[List[Dict[str, Any]]] = None,
-        requirements: Optional[List[Dict[str, Any]]] = None,
-        open_questions: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        description: str | None = None,
+        user_stories: list[dict[str, Any]] | None = None,
+        requirements: list[dict[str, Any]] | None = None,
+        open_questions: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Refine an existing specification with new information.
 
         Adds or updates information in an existing specification. New items
@@ -260,10 +266,13 @@ class PlanningTools:
         """
         await self.initialize()
 
+        if not self.spec_store:
+            raise RuntimeError("Spec store not initialized")
+
         # Get existing spec
         spec = await self.spec_store.get(spec_id)
         if not spec:
-            raise ValueError(f"Specification {spec_id} not found or does not exist")
+            raise ValueError(f"Specification {spec_id} not found")
 
         # Track what was updated
         updated_fields = []
@@ -315,7 +324,10 @@ class PlanningTools:
             updated_fields.append("open_questions")
 
         # Save changes
-        await self.spec_store.save(spec)
+        if self.spec_store:
+            await self.spec_store.save(spec)
+        else:
+            raise RuntimeError("Spec store not initialized")
 
         logger.info(f"Refined specification: {spec_id}")
 
@@ -333,10 +345,10 @@ class PlanningTools:
         self,
         spec_id: str,
         title: str,
-        sections: Optional[List[str]] = None,
-        platform_sections: Optional[Dict[str, List[str]]] = None,
+        sections: list[str] | None = None,
+        platform_sections: dict[str, list[str]] | None = None,
         save_to_disk: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate a SpecKit-compliant specification template.
 
         Creates a template with standard sections for specification development.
@@ -384,7 +396,7 @@ class PlanningTools:
 
         # Metadata
         lines.append(f"**ID**: {spec_id}")
-        lines.append(f"**Status**: draft")
+        lines.append("**Status**: draft")
         lines.append(f"**Created**: {datetime.now().isoformat()}")
         lines.append(f"**Updated**: {datetime.now().isoformat()}")
         lines.append("")
@@ -486,7 +498,7 @@ class PlanningTools:
     async def detect_dependencies(
         self,
         spec_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Detect dependencies between specifications.
 
         Finds other specifications that this spec depends on or that depend
@@ -513,6 +525,9 @@ class PlanningTools:
             ['SPEC-001']
         """
         await self.initialize()
+
+        if not self.spec_store:
+            raise RuntimeError("Spec store not initialized")
 
         # Get spec
         spec = await self.spec_store.get(spec_id)
@@ -583,7 +598,7 @@ class PlanningTools:
             "circular_dependencies": circular_deps,
         }
 
-    def _extract_keywords(self, text: str) -> Set[str]:
+    def _extract_keywords(self, text: str) -> set[str]:
         """Extract significant keywords from text.
 
         Args:
@@ -614,7 +629,7 @@ class PlanningTools:
         self,
         spec_id: str,
         save_to_disk: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate actionable tasks from a specification.
 
         Breaks down the specification into concrete tasks organized by
@@ -647,6 +662,9 @@ class PlanningTools:
             >>> print(f"Generated {len(result['tasks'])} tasks")
         """
         await self.initialize()
+
+        if not self.spec_store:
+            raise RuntimeError("Spec store not initialized")
 
         # Get spec
         spec = await self.spec_store.get(spec_id)

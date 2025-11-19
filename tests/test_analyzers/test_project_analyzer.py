@@ -4,19 +4,19 @@ Tests recursive build file scanning, project type detection,
 and complete project analysis workflow.
 """
 
-import pytest
 from pathlib import Path
-from typing import List, Optional
+
+import pytest
 
 from kortex_mcp.analyzers.project_analyzer import (
     ProjectAnalyzer,
     analyze_project,
     detect_project_type,
     find_build_files,
-    is_kmp_project,
     is_cmp_project,
+    is_kmp_project,
 )
-from kortex_mcp.models.project import Project, ProjectType, SourceSet, SourceSetType
+from kortex_mcp.models.project import Project, ProjectType
 
 
 class TestProjectAnalyzer:
@@ -29,7 +29,7 @@ class TestProjectAnalyzer:
             sample_kmp_project: Path to sample KMP project fixture
         """
         analyzer = ProjectAnalyzer(sample_kmp_project)
-        
+
         assert analyzer.project_dir == sample_kmp_project
         assert analyzer.project_dir.exists()
 
@@ -41,7 +41,7 @@ class TestProjectAnalyzer:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         assert project is not None
         assert isinstance(project, Project)
         assert project.root_path == sample_kmp_project
@@ -54,7 +54,7 @@ class TestProjectAnalyzer:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         assert project.name is not None
         assert len(project.name) > 0
 
@@ -66,7 +66,7 @@ class TestProjectAnalyzer:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         assert len(project.source_sets) > 0
         # Should have at least commonMain, androidMain, iosMain
         source_set_names = list(project.source_sets.keys())
@@ -80,7 +80,7 @@ class TestProjectAnalyzer:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         assert len(project.targets) > 0
         # Should have android and iOS targets
         target_names = [t.name for t in project.targets]
@@ -97,7 +97,7 @@ class TestProjectTypeDetection:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project_type = detect_project_type(sample_kmp_project)
-        
+
         assert project_type == ProjectType.KMP
 
     def test_is_kmp_project_returns_true(self, sample_kmp_project: Path) -> None:
@@ -127,9 +127,9 @@ kotlin {
     ios()
 }
         """)
-        
+
         project_type = detect_project_type(tmp_path)
-        
+
         assert project_type == ProjectType.CMP
 
     def test_is_cmp_project_returns_true(self, tmp_path: Path) -> None:
@@ -146,7 +146,7 @@ plugins {
     id("org.jetbrains.compose") version "1.5.10"
 }
         """)
-        
+
         assert is_cmp_project(tmp_path) is True
 
     def test_detect_unknown_project(self, tmp_path: Path) -> None:
@@ -162,9 +162,9 @@ plugins {
     kotlin("jvm") version "1.9.20"
 }
         """)
-        
+
         project_type = detect_project_type(tmp_path)
-        
+
         assert project_type == ProjectType.UNKNOWN
 
 
@@ -178,7 +178,7 @@ class TestBuildFileFinding:
             sample_kmp_project: Path to sample KMP project fixture
         """
         build_files = find_build_files(sample_kmp_project)
-        
+
         assert len(build_files) > 0
         # Should find the root build.gradle.kts
         root_build = sample_kmp_project / "build.gradle.kts"
@@ -192,17 +192,17 @@ class TestBuildFileFinding:
         """
         # Create multi-module structure
         (tmp_path / "build.gradle.kts").write_text("// Root build file")
-        
+
         module1 = tmp_path / "module1"
         module1.mkdir()
         (module1 / "build.gradle.kts").write_text("// Module 1")
-        
+
         module2 = tmp_path / "module2"
         module2.mkdir()
         (module2 / "build.gradle.kts").write_text("// Module 2")
-        
+
         build_files = find_build_files(tmp_path)
-        
+
         # Should find all 3 build files
         assert len(build_files) >= 3
 
@@ -216,12 +216,12 @@ class TestBuildFileFinding:
         build_dir = tmp_path / "build"
         build_dir.mkdir()
         (build_dir / "build.gradle.kts").write_text("// Should be ignored")
-        
+
         # Create real build file
         (tmp_path / "build.gradle.kts").write_text("// Real build file")
-        
+
         build_files = find_build_files(tmp_path)
-        
+
         # Should only find the root build file, not the one in build/
         assert len(build_files) == 1
         assert tmp_path / "build.gradle.kts" in build_files
@@ -233,7 +233,7 @@ class TestBuildFileFinding:
             tmp_path: Temporary directory for test files
         """
         build_files = find_build_files(tmp_path)
-        
+
         assert len(build_files) == 0
 
 
@@ -250,9 +250,9 @@ class TestCompleteProjectAnalysis:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         source_set_names = set(project.source_sets.keys())
-        
+
         # Should find key source sets
         assert "commonMain" in source_set_names
         assert "androidMain" in source_set_names or "iosMain" in source_set_names
@@ -267,7 +267,7 @@ class TestCompleteProjectAnalysis:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         # Check that at least one source set has dependencies
         has_dependencies = any(
             len(ss.dependencies) > 0 for ss in project.source_sets.values()
@@ -284,10 +284,10 @@ class TestCompleteProjectAnalysis:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         # Should map source directories for source sets
         common_main = project.source_sets.get("commonMain")
-        
+
         if common_main:
             # Source dirs should exist or be reasonable paths
             assert len(common_main.source_dirs) >= 0  # May be 0 if not explicit
@@ -302,10 +302,10 @@ class TestCompleteProjectAnalysis:
             sample_kmp_project: Path to sample KMP project fixture
         """
         project = await analyze_project(sample_kmp_project)
-        
+
         # iOS source sets should depend on commonMain
         ios_main = project.source_sets.get("iosMain")
-        
+
         if ios_main:
             assert "commonMain" in ios_main.depends_on
 
@@ -327,14 +327,14 @@ rootProject.name = "MultiModuleProject"
 include(":shared")
 include(":app")
         """)
-        
+
         # Root build file
         (tmp_path / "build.gradle.kts").write_text("""
 plugins {
     kotlin("multiplatform") version "1.9.20" apply false
 }
         """)
-        
+
         # Shared module
         shared = tmp_path / "shared"
         shared.mkdir()
@@ -348,9 +348,9 @@ kotlin {
     ios()
 }
         """)
-        
+
         project = await analyze_project(tmp_path)
-        
+
         assert project is not None
         # Should detect it as a KMP project
         assert project.type == ProjectType.KMP
@@ -369,7 +369,7 @@ include(":shared")
 include(":app")
 include(":core")
         """)
-        
+
         analyzer = ProjectAnalyzer(tmp_path)
         # Analyzer should be able to identify modules
         assert analyzer.project_dir == tmp_path
@@ -394,7 +394,7 @@ class TestErrorHandling:
             tmp_path: Temporary directory for test files
         """
         project = await analyze_project(tmp_path)
-        
+
         # Should return a project with UNKNOWN type
         assert project.type == ProjectType.UNKNOWN
 
@@ -407,7 +407,7 @@ class TestErrorHandling:
         """
         build_file = tmp_path / "build.gradle.kts"
         build_file.write_text("this is not valid gradle {{{")
-        
+
         # Should not crash, may return partial results
         project = await analyze_project(tmp_path)
         assert project is not None
@@ -426,11 +426,11 @@ class TestPerformance:
             sample_kmp_project: Path to sample KMP project fixture
         """
         import time
-        
+
         start = time.time()
         project = await analyze_project(sample_kmp_project)
         duration = time.time() - start
-        
+
         assert project is not None
         # Should complete in less than 30 seconds as per requirements
         assert duration < 30.0
@@ -446,16 +446,16 @@ class TestPerformance:
         for i in range(3):
             module = tmp_path / f"module{i}"
             module.mkdir()
-            (module / "build.gradle.kts").write_text(f"""
-plugins {{
+            (module / "build.gradle.kts").write_text("""
+plugins {
     kotlin("multiplatform")
-}}
+}
 
-kotlin {{
+kotlin {
     android()
-}}
+}
             """)
-        
+
         # Analysis should handle multiple modules efficiently
         project = await analyze_project(tmp_path)
         assert project is not None

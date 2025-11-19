@@ -5,9 +5,8 @@ including source sets, targets, and dependencies.
 """
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Dict, Optional, Set
 from enum import Enum
+from pathlib import Path
 
 
 class ProjectType(Enum):
@@ -56,10 +55,10 @@ class SourceSet:
     """
     name: str
     type: SourceSetType
-    source_dirs: List[Path] = field(default_factory=list)
-    resource_dirs: List[Path] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    depends_on: List[str] = field(default_factory=list)
+    source_dirs: list[Path] = field(default_factory=list)
+    resource_dirs: list[Path] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Infer source set type from name if UNKNOWN."""
@@ -73,7 +72,7 @@ class SourceSet:
             Inferred SourceSetType based on name patterns
         """
         name_lower = self.name.lower()
-        
+
         if "common" in name_lower:
             return SourceSetType.COMMON
         elif "android" in name_lower:
@@ -88,7 +87,7 @@ class SourceSet:
             return SourceSetType.NATIVE
         elif "wasm" in name_lower:
             return SourceSetType.WASM
-        
+
         return SourceSetType.UNKNOWN
 
 
@@ -110,7 +109,7 @@ class Target:
     """
     name: str
     platform: str
-    source_sets: List[str] = field(default_factory=list)
+    source_sets: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -144,14 +143,14 @@ class Project:
     name: str
     root_path: Path
     type: ProjectType = ProjectType.UNKNOWN
-    source_sets: Dict[str, SourceSet] = field(default_factory=dict)
-    targets: List[Target] = field(default_factory=list)
-    gradle_version: Optional[str] = None
-    kotlin_version: Optional[str] = None
-    compose_version: Optional[str] = None
-    build_files: List[Path] = field(default_factory=list)
+    source_sets: dict[str, SourceSet] = field(default_factory=dict)
+    targets: list[Target] = field(default_factory=list)
+    gradle_version: str | None = None
+    kotlin_version: str | None = None
+    compose_version: str | None = None
+    build_files: list[Path] = field(default_factory=list)
 
-    def get_source_set(self, name: str) -> Optional[SourceSet]:
+    def get_source_set(self, name: str) -> SourceSet | None:
         """Get a source set by name.
 
         Args:
@@ -167,7 +166,7 @@ class Project:
         """
         return self.source_sets.get(name)
 
-    def get_all_source_dirs(self) -> Set[Path]:
+    def get_all_source_dirs(self) -> set[Path]:
         """Get all source directories across all source sets.
 
         Returns:
@@ -178,12 +177,12 @@ class Project:
             >>> for dir in all_dirs:
             ...     print(dir)
         """
-        dirs: Set[Path] = set()
+        dirs: set[Path] = set()
         for source_set in self.source_sets.values():
             dirs.update(source_set.source_dirs)
         return dirs
 
-    def get_common_source_sets(self) -> List[SourceSet]:
+    def get_common_source_sets(self) -> list[SourceSet]:
         """Get all common/shared source sets.
 
         Returns:
@@ -199,7 +198,7 @@ class Project:
             if ss.type == SourceSetType.COMMON
         ]
 
-    def get_platform_source_sets(self, platform: SourceSetType) -> List[SourceSet]:
+    def get_platform_source_sets(self, platform: SourceSetType) -> list[SourceSet]:
         """Get all source sets for a specific platform.
 
         Args:

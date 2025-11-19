@@ -4,15 +4,14 @@ This module provides persistent storage for project configuration,
 including source sets, targets, and detected project metadata.
 """
 
+import asyncio
 import json
 from pathlib import Path
-from typing import Optional, Dict, Any, List
-import asyncio
+from typing import Any
 
-from ..utils.logging import get_logger
+from ..models.project import Project, ProjectType, SourceSet, SourceSetType, Target
 from ..utils.file_utils import ensure_directory
-from ..models.project import Project, SourceSet, Target, ProjectType, SourceSetType
-
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -55,14 +54,14 @@ class ProjectStore:
             >>> await store.save(project)
         """
         logger.info(f"Saving project configuration: {project.name}")
-        
+
         async with self._lock:
             # Ensure directory exists
             ensure_directory(self.storage_path.parent)
-            
+
             # Convert to dictionary
             data = self._project_to_dict(project)
-            
+
             try:
                 # Write JSON file
                 await asyncio.to_thread(
@@ -73,9 +72,9 @@ class ProjectStore:
                 logger.debug(f"Project configuration saved to {self.storage_path}")
             except Exception as e:
                 logger.error(f"Failed to save project configuration: {e}")
-                raise IOError(f"Failed to save project: {e}") from e
+                raise OSError(f"Failed to save project: {e}") from e
 
-    async def load(self) -> Optional[Project]:
+    async def load(self) -> Project | None:
         """Load project configuration from storage.
 
         Returns:
@@ -96,11 +95,11 @@ class ProjectStore:
                 data = await asyncio.to_thread(
                     lambda: json.loads(self.storage_path.read_text())
                 )
-                
+
                 project = self._dict_to_project(data)
                 logger.info(f"Loaded project configuration: {project.name}")
                 return project
-                
+
             except Exception as e:
                 logger.error(f"Failed to load project configuration: {e}")
                 return None
@@ -138,7 +137,7 @@ class ProjectStore:
                 logger.error(f"Failed to delete project configuration: {e}")
                 return False
 
-    def _project_to_dict(self, project: Project) -> Dict[str, Any]:
+    def _project_to_dict(self, project: Project) -> dict[str, Any]:
         """Convert Project to dictionary for serialization.
 
         Args:
@@ -162,7 +161,7 @@ class ProjectStore:
             "build_files": [str(p) for p in project.build_files],
         }
 
-    def _source_set_to_dict(self, source_set: SourceSet) -> Dict[str, Any]:
+    def _source_set_to_dict(self, source_set: SourceSet) -> dict[str, Any]:
         """Convert SourceSet to dictionary.
 
         Args:
@@ -180,7 +179,7 @@ class ProjectStore:
             "depends_on": source_set.depends_on,
         }
 
-    def _target_to_dict(self, target: Target) -> Dict[str, Any]:
+    def _target_to_dict(self, target: Target) -> dict[str, Any]:
         """Convert Target to dictionary.
 
         Args:
@@ -195,7 +194,7 @@ class ProjectStore:
             "source_sets": target.source_sets,
         }
 
-    def _dict_to_project(self, data: Dict[str, Any]) -> Project:
+    def _dict_to_project(self, data: dict[str, Any]) -> Project:
         """Convert dictionary to Project.
 
         Args:
@@ -222,7 +221,7 @@ class ProjectStore:
             build_files=[Path(p) for p in data.get("build_files", [])],
         )
 
-    def _dict_to_source_set(self, data: Dict[str, Any]) -> SourceSet:
+    def _dict_to_source_set(self, data: dict[str, Any]) -> SourceSet:
         """Convert dictionary to SourceSet.
 
         Args:
@@ -240,7 +239,7 @@ class ProjectStore:
             depends_on=data.get("depends_on", []),
         )
 
-    def _dict_to_target(self, data: Dict[str, Any]) -> Target:
+    def _dict_to_target(self, data: dict[str, Any]) -> Target:
         """Convert dictionary to Target.
 
         Args:
@@ -255,7 +254,7 @@ class ProjectStore:
             source_sets=data.get("source_sets", []),
         )
 
-    async def update_partial(self, updates: Dict[str, Any]) -> bool:
+    async def update_partial(self, updates: dict[str, Any]) -> bool:
         """Update specific fields in stored project configuration.
 
         Args:
@@ -288,7 +287,7 @@ class ProjectStore:
             logger.error(f"Failed to update project configuration: {e}")
             return False
 
-    async def get_project_name(self) -> Optional[str]:
+    async def get_project_name(self) -> str | None:
         """Get project name from stored configuration.
 
         Returns:
@@ -300,7 +299,7 @@ class ProjectStore:
         project = await self.load()
         return project.name if project else None
 
-    async def get_source_set_names(self) -> List[str]:
+    async def get_source_set_names(self) -> list[str]:
         """Get list of source set names from stored configuration.
 
         Returns:
@@ -313,7 +312,7 @@ class ProjectStore:
         project = await self.load()
         return list(project.source_sets.keys()) if project else []
 
-    async def get_target_names(self) -> List[str]:
+    async def get_target_names(self) -> list[str]:
         """Get list of target names from stored configuration.
 
         Returns:

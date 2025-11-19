@@ -4,12 +4,11 @@ This module provides utilities for path handling, file operations,
 and working with KMP/CMP project structures.
 """
 
-from pathlib import Path
-from typing import Optional, List
 import os
+from pathlib import Path
 
 
-def find_project_root(start_path: Path, markers: Optional[List[str]] = None) -> Optional[Path]:
+def find_project_root(start_path: Path, markers: list[str] | None = None) -> Path | None:
     """Find the project root directory by looking for marker files.
 
     Args:
@@ -28,16 +27,16 @@ def find_project_root(start_path: Path, markers: Optional[List[str]] = None) -> 
         markers = ["build.gradle.kts", "settings.gradle.kts", ".git"]
 
     current = start_path.resolve()
-    
+
     while current != current.parent:
         if any((current / marker).exists() for marker in markers):
             return current
         current = current.parent
-    
+
     return None
 
 
-def find_build_files(root_path: Path, filename: str = "build.gradle.kts") -> List[Path]:
+def find_build_files(root_path: Path, filename: str = "build.gradle.kts") -> list[Path]:
     """Find all build files in a project directory tree.
 
     Args:
@@ -52,15 +51,15 @@ def find_build_files(root_path: Path, filename: str = "build.gradle.kts") -> Lis
         >>> for build in builds:
         ...     print(build)
     """
-    build_files: List[Path] = []
-    
+    build_files: list[Path] = []
+
     for root, dirs, files in os.walk(root_path):
         # Skip common directories that shouldn't contain build files
         dirs[:] = [d for d in dirs if d not in {'.git', '.gradle', 'build', '.idea', 'node_modules'}]
-        
+
         if filename in files:
             build_files.append(Path(root) / filename)
-    
+
     return build_files
 
 
@@ -154,7 +153,7 @@ def get_relative_path(path: Path, base: Path) -> Path:
         raise ValueError(f"Path {path} is not relative to {base}") from e
 
 
-def read_file_safe(path: Path, encoding: str = "utf-8") -> Optional[str]:
+def read_file_safe(path: Path, encoding: str = "utf-8") -> str | None:
     """Safely read a file, returning None on error.
 
     Args:
@@ -171,7 +170,7 @@ def read_file_safe(path: Path, encoding: str = "utf-8") -> Optional[str]:
     """
     try:
         return path.read_text(encoding=encoding)
-    except (IOError, OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError):
         return None
 
 
@@ -194,5 +193,5 @@ def write_file_safe(path: Path, content: str, encoding: str = "utf-8") -> bool:
         ensure_directory(path.parent)
         path.write_text(content, encoding=encoding)
         return True
-    except (IOError, OSError):
+    except OSError:
         return False

@@ -4,19 +4,19 @@ Tests regex-based parsing of build.gradle.kts files for KMP/CMP project
 configuration including plugins, source sets, dependencies, and targets.
 """
 
-import pytest
 from pathlib import Path
-from typing import List, Dict
 
+import pytest
+
+from kortex_mcp.models.project import SourceSetType
 from kortex_mcp.utils.gradle_parser import (
     GradleParser,
-    parse_build_file,
+    extract_dependencies,
     extract_plugins,
     extract_source_sets,
-    extract_dependencies,
     extract_targets,
+    parse_build_file,
 )
-from kortex_mcp.models.project import SourceSet, SourceSetType, Target
 
 
 class TestGradleParser:
@@ -30,7 +30,7 @@ class TestGradleParser:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         parser = GradleParser(build_file)
-        
+
         assert parser.build_file == build_file
         assert parser.build_file.exists()
 
@@ -42,7 +42,7 @@ class TestGradleParser:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         result = parse_build_file(build_file)
-        
+
         assert result is not None
         assert "plugins" in result
         assert "source_sets" in result
@@ -57,7 +57,7 @@ class TestGradleParser:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         plugins = extract_plugins(build_file)
-        
+
         assert "kotlin-multiplatform" in plugins or "multiplatform" in str(plugins)
 
     def test_detect_compose_multiplatform_plugin(self, tmp_path: Path) -> None:
@@ -73,9 +73,9 @@ plugins {
     id("org.jetbrains.compose") version "1.5.10"
 }
         """)
-        
+
         plugins = extract_plugins(build_file)
-        
+
         assert "compose" in str(plugins).lower() or "org.jetbrains.compose" in plugins
 
 
@@ -90,7 +90,7 @@ class TestSourceSetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         source_sets = extract_source_sets(build_file)
-        
+
         common_main = next((ss for ss in source_sets if ss.name == "commonMain"), None)
         assert common_main is not None
         assert common_main.type == SourceSetType.COMMON
@@ -103,7 +103,7 @@ class TestSourceSetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         source_sets = extract_source_sets(build_file)
-        
+
         android_main = next((ss for ss in source_sets if ss.name == "androidMain"), None)
         assert android_main is not None
         assert android_main.type == SourceSetType.ANDROID
@@ -116,7 +116,7 @@ class TestSourceSetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         source_sets = extract_source_sets(build_file)
-        
+
         ios_main = next((ss for ss in source_sets if ss.name == "iosMain"), None)
         assert ios_main is not None
         assert ios_main.type == SourceSetType.IOS
@@ -129,11 +129,11 @@ class TestSourceSetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         source_sets = extract_source_sets(build_file)
-        
+
         common_main = next((ss for ss in source_sets if ss.name == "commonMain"), None)
         assert common_main is not None
         assert len(common_main.dependencies) > 0
-        
+
         # Check for kotlinx-coroutines-core dependency
         has_coroutines = any("coroutines" in dep for dep in common_main.dependencies)
         assert has_coroutines
@@ -146,7 +146,7 @@ class TestSourceSetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         source_sets = extract_source_sets(build_file)
-        
+
         ios_main = next((ss for ss in source_sets if ss.name == "iosMain"), None)
         assert ios_main is not None
         # iosMain should depend on commonMain
@@ -164,7 +164,7 @@ class TestDependencyExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         dependencies = extract_dependencies(build_file)
-        
+
         assert len(dependencies) > 0
         # Should find kotlinx-coroutines-core
         has_coroutines = any("coroutines" in dep for dep in dependencies)
@@ -178,7 +178,7 @@ class TestDependencyExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         dependencies = extract_dependencies(build_file, include_test=True)
-        
+
         # Should find kotlin("test")
         has_test = any("test" in dep.lower() for dep in dependencies)
         assert has_test
@@ -197,9 +197,9 @@ dependencies {
     api("io.ktor:ktor-client-core:2.3.5")
 }
         """)
-        
+
         dependencies = extract_dependencies(build_file)
-        
+
         assert len(dependencies) >= 2
         # Should handle both string notation and kotlin() notation
         assert any("kotlinx-coroutines-core" in dep for dep in dependencies)
@@ -217,7 +217,7 @@ class TestTargetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         targets = extract_targets(build_file)
-        
+
         android_target = next((t for t in targets if t.name == "android"), None)
         assert android_target is not None
 
@@ -229,7 +229,7 @@ class TestTargetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         targets = extract_targets(build_file)
-        
+
         ios_target_names = [t.name for t in targets if "ios" in t.name.lower()]
         assert len(ios_target_names) >= 3  # Should have at least 3 iOS targets
 
@@ -241,7 +241,7 @@ class TestTargetExtraction:
         """
         build_file = sample_kmp_project / "build.gradle.kts"
         targets = extract_targets(build_file)
-        
+
         # iOS targets should have framework configuration
         ios_targets = [t for t in targets if "ios" in t.name.lower()]
         assert len(ios_targets) > 0
@@ -268,13 +268,13 @@ plugins {
 kotlin {
     android()
     ios()
-    
+
     sourceSets {
         val commonMain by getting
     }
 }
         """)
-        
+
         result = parse_build_file(build_file)
         assert result is not None
 
@@ -285,7 +285,7 @@ kotlin {
             tmp_path: Temporary directory for test files
         """
         non_existent = tmp_path / "does_not_exist.gradle.kts"
-        
+
         with pytest.raises(FileNotFoundError):
             parse_build_file(non_existent)
 
@@ -297,7 +297,7 @@ kotlin {
         """
         build_file = tmp_path / "build.gradle.kts"
         build_file.write_text("this is not valid gradle syntax {{{")
-        
+
         # Should not crash, but may return empty or partial results
         result = parse_build_file(build_file)
         assert result is not None  # Should return something, even if empty
@@ -316,14 +316,14 @@ plugins {
     // id("another-plugin")
 }
 
-/* 
+/*
  * Block comment
  */
 kotlin {
     android()
 }
         """)
-        
+
         plugins = extract_plugins(build_file)
         # Should ignore commented-out plugins
         assert "multiplatform" in str(plugins).lower()
@@ -340,7 +340,7 @@ class TestGradleParserEdgeCases:
         """
         build_file = tmp_path / "build.gradle.kts"
         build_file.write_text("")
-        
+
         result = parse_build_file(build_file)
         assert result is not None
         # Should return empty collections
@@ -358,7 +358,7 @@ plugins {
     kotlin("jvm") version "1.9.20"
 }
         """)
-        
+
         plugins = extract_plugins(build_file)
         # Should still parse, just won't find multiplatform plugin
         assert plugins is not None
@@ -378,7 +378,7 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             }
         }
-        
+
         val iosMain by creating {
             dependsOn(commonMain)
             dependencies {
@@ -388,10 +388,10 @@ kotlin {
     }
 }
         """)
-        
+
         source_sets = extract_source_sets(build_file)
         ios_main = next((ss for ss in source_sets if ss.name == "iosMain"), None)
-        
+
         assert ios_main is not None
         assert "commonMain" in ios_main.depends_on
         assert len(ios_main.dependencies) > 0

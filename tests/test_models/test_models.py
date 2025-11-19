@@ -1,14 +1,14 @@
 """Unit tests for specification and elicitation models."""
 
-import pytest
 from datetime import datetime
+
 from kortex_mcp.models.specification import (
     ElicitationQuestion,
-    QuestionType,
     PlatformContext,
-    UserStory,
+    QuestionType,
     Requirement,
     Specification,
+    UserStory,
 )
 
 
@@ -21,7 +21,7 @@ class TestElicitationQuestion:
             question="What should the feature do?",
             question_type=QuestionType.OPEN_ENDED,
         )
-        
+
         assert question.question == "What should the feature do?"
         assert question.question_type == QuestionType.OPEN_ENDED
         assert question.options == []
@@ -34,7 +34,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.SINGLE_SELECT,
             options=["Koin", "Kodein", "Manual"],
         )
-        
+
         assert question.question == "Which framework?"
         assert question.question_type == QuestionType.SINGLE_SELECT
         assert len(question.options) == 3
@@ -48,7 +48,7 @@ class TestElicitationQuestion:
             options=["Android", "iOS", "Desktop", "Web"],
             context="Select all that apply",
         )
-        
+
         assert question.question_type == QuestionType.MULTI_SELECT
         assert len(question.options) == 4
         assert question.context == "Select all that apply"
@@ -61,7 +61,7 @@ class TestElicitationQuestion:
             options=["Keychain", "UserDefaults"],
             platform_context=PlatformContext.IOS,
         )
-        
+
         assert question.platform_context == PlatformContext.IOS
 
     def test_validate_valid_open_ended(self):
@@ -70,7 +70,7 @@ class TestElicitationQuestion:
             question="Describe the feature",
             question_type=QuestionType.OPEN_ENDED,
         )
-        
+
         assert question.validate() is True
 
     def test_validate_valid_single_select(self):
@@ -80,7 +80,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.SINGLE_SELECT,
             options=["Option A", "Option B"],
         )
-        
+
         assert question.validate() is True
 
     def test_validate_invalid_empty_question(self):
@@ -89,7 +89,7 @@ class TestElicitationQuestion:
             question="",
             question_type=QuestionType.OPEN_ENDED,
         )
-        
+
         assert question.validate() is False
 
     def test_validate_invalid_select_without_options(self):
@@ -99,7 +99,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.SINGLE_SELECT,
             options=[],
         )
-        
+
         assert question.validate() is False
 
     def test_validate_invalid_open_ended_with_options(self):
@@ -109,7 +109,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.OPEN_ENDED,
             options=["This", "Should", "Not", "Be", "Here"],
         )
-        
+
         assert question.validate() is False
 
     def test_validate_response_open_ended_valid(self):
@@ -119,7 +119,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.OPEN_ENDED,
             response="I think this is great!",
         )
-        
+
         assert question.validate_response() is True
 
     def test_validate_response_open_ended_empty(self):
@@ -129,7 +129,7 @@ class TestElicitationQuestion:
             question_type=QuestionType.OPEN_ENDED,
             response="",
         )
-        
+
         assert question.validate_response() is False
 
     def test_validate_response_single_select_valid(self):
@@ -140,7 +140,7 @@ class TestElicitationQuestion:
             options=["A", "B", "C"],
             response="B",
         )
-        
+
         assert question.validate_response() is True
 
     def test_validate_response_single_select_invalid(self):
@@ -151,7 +151,7 @@ class TestElicitationQuestion:
             options=["A", "B", "C"],
             response="D",  # Not in options
         )
-        
+
         assert question.validate_response() is False
 
     def test_validate_response_multi_select_valid(self):
@@ -162,7 +162,7 @@ class TestElicitationQuestion:
             options=["A", "B", "C", "D"],
             response=["A", "C"],
         )
-        
+
         assert question.validate_response() is True
 
     def test_validate_response_multi_select_invalid(self):
@@ -173,7 +173,7 @@ class TestElicitationQuestion:
             options=["A", "B", "C"],
             response=["A", "D"],  # D not in options
         )
-        
+
         assert question.validate_response() is False
 
     def test_validate_response_multi_select_not_list(self):
@@ -184,7 +184,7 @@ class TestElicitationQuestion:
             options=["A", "B", "C"],
             response="A",  # Should be a list
         )
-        
+
         assert question.validate_response() is False
 
     def test_to_dict(self):
@@ -198,9 +198,9 @@ class TestElicitationQuestion:
             platform_context=PlatformContext.ANDROID,
             category="testing",
         )
-        
+
         data = question.to_dict()
-        
+
         assert data["question"] == "Test question"
         assert data["question_type"] == "single_select"
         assert data["options"] == ["A", "B"]
@@ -222,9 +222,9 @@ class TestElicitationQuestion:
             "category": "testing",
             "created_at": datetime.now().isoformat(),
         }
-        
+
         question = ElicitationQuestion.from_dict(data)
-        
+
         assert question.question == "Test question"
         assert question.question_type == QuestionType.MULTI_SELECT
         assert question.options == ["X", "Y", "Z"]
@@ -239,9 +239,9 @@ class TestElicitationQuestion:
             "question": "Minimal question",
             "question_type": "open_ended",
         }
-        
+
         question = ElicitationQuestion.from_dict(data)
-        
+
         assert question.question == "Minimal question"
         assert question.question_type == QuestionType.OPEN_ENDED
         assert question.options == []
@@ -258,10 +258,10 @@ class TestElicitationQuestion:
             context="Testing serialization",
             category="test",
         )
-        
+
         data = original.to_dict()
         restored = ElicitationQuestion.from_dict(data)
-        
+
         assert restored.question == original.question
         assert restored.question_type == original.question_type
         assert restored.options == original.options
@@ -282,7 +282,7 @@ class TestUserStory:
             priority="P1",
             acceptance_criteria=["Can login with valid credentials"],
         )
-        
+
         assert story.id == "US-001"
         assert story.title == "User Authentication"
         assert story.priority == "P1"
@@ -296,7 +296,7 @@ class TestUserStory:
             title="Some feature",
             description="Description",
         )
-        
+
         assert story.priority == "P2"
         assert story.acceptance_criteria == []
         assert story.status == "draft"
@@ -314,7 +314,7 @@ class TestRequirement:
             rationale="Security requirement",
             user_stories=["US-001"],
         )
-        
+
         assert req.id == "REQ-001"
         assert req.type == "functional"
         assert req.rationale == "Security requirement"
@@ -327,7 +327,7 @@ class TestRequirement:
             type="non-functional",
             description="Performance requirement",
         )
-        
+
         assert req.rationale is None
         assert req.user_stories == []
         assert req.status == "draft"
@@ -348,7 +348,7 @@ class TestSpecification:
             type="functional",
             description="Requirement A",
         )
-        
+
         spec = Specification(
             id="SPEC-001",
             title="Authentication Feature",
@@ -357,7 +357,7 @@ class TestSpecification:
             requirements=[req],
             open_questions=["Which OAuth2 provider should we use?"],
         )
-        
+
         assert spec.id == "SPEC-001"
         assert spec.title == "Authentication Feature"
         assert len(spec.user_stories) == 1
@@ -377,9 +377,9 @@ class TestSpecification:
             description="Test",
             user_stories=[story],
         )
-        
+
         data = spec.to_dict()
-        
+
         assert data["id"] == "SPEC-001"
         assert data["title"] == "Test Spec"
         assert len(data["user_stories"]) == 1
@@ -394,7 +394,7 @@ class TestSpecification:
             title="Minimal Spec",
             description="Minimal",
         )
-        
+
         assert spec.user_stories == []
         assert spec.requirements == []
         assert spec.open_questions == []

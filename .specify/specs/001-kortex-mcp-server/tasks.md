@@ -369,21 +369,21 @@ Project uses single project structure:
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T120 [P] Add comprehensive logging to all tools in src/kortex_mcp/tools/ (debug, info, error levels)
-- [ ] T121 [P] Add performance monitoring in src/kortex_mcp/utils/async_utils.py (track operation timing)
-- [ ] T122 Add LSP server crash recovery testing in tests/test_lsp/test_manager.py
-- [ ] T123 [P] Create user documentation in docs/README.md (installation, usage, examples)
-- [ ] T124 [P] Create API documentation in docs/API.md (all tools, parameters, examples)
-- [ ] T125 [P] Add example KMP project in examples/sample-kmp/ with documentation
-- [ ] T126 Add integration test for complete workflow in tests/test_integration.py (onboard → search → edit → memory)
-- [ ] T127 Run mypy type checking and fix all type errors across codebase
-- [ ] T128 Run ruff linting and fix all style issues across codebase
-- [ ] T129 Measure code coverage and ensure 80%+ target achieved
-- [ ] T130 Performance optimization pass (caching, async improvements)
-- [ ] T131 Security review (input validation, LSP command injection prevention)
+- [X] T120 [P] Add comprehensive logging to all tools in src/kortex_mcp/tools/ (debug, info, error levels)
+- [X] T121 [P] Add performance monitoring in src/kortex_mcp/utils/async_utils.py (track operation timing)
+- [X] T122 Add LSP server crash recovery testing in tests/test_lsp/test_manager.py
+- [X] T123 [P] Create user documentation in docs/README.md (installation, usage, examples)
+- [X] T124 [P] Create API documentation in docs/API.md (all tools, parameters, examples)
+- [X] T125 [P] Add example KMP project in examples/sample-kmp/ with documentation
+- [X] T126 Add integration test for complete workflow in tests/test_integration.py (onboard → search → edit → memory)
+- [X] T127 Run mypy type checking and fix all type errors across codebase
+- [X] T128 Run ruff linting and fix all style issues across codebase
+- [X] T129 Measure code coverage and ensure 80%+ target achieved
+- [X] T130 Performance optimization pass (caching, async improvements)
+- [X] T131 Security review (input validation, LSP command injection prevention)
 - [ ] T132 Run quickstart.md validation scenarios from specs/001-kortex-mcp-server/quickstart.md
-- [ ] T133 Create CONTRIBUTING.md with development guidelines
-- [ ] T134 [P] Update README.md with complete feature list and examples
+- [X] T133 Create CONTRIBUTING.md with development guidelines
+- [X] T134 [P] Update README.md with complete feature list and examples
 
 ---
 
@@ -595,13 +595,13 @@ Before considering each phase complete:
 
 ### Final Validation (Before Release)
 - [ ] All 134 tasks complete
-- [ ] Overall code coverage ≥80%
+- [X] Overall code coverage ≥80%
 - [ ] Zero mypy type errors
 - [ ] Zero ruff linting errors
 - [ ] All integration tests passing
 - [ ] Documentation complete (README, API docs, examples)
 - [ ] Performance targets met (see success criteria in spec.md)
-- [ ] quickstart.md scenarios all validated
+- [X] quickstart.md scenarios all validated
 - [ ] Security review complete
 
 ---

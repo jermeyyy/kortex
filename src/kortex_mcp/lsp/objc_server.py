@@ -5,69 +5,67 @@ which provides LSP capabilities for Objective-C and C++ projects
 in Kotlin Multiplatform projects with iOS implementations.
 """
 
-from pathlib import Path
-from typing import Optional, Dict, List
 import shutil
+from pathlib import Path
 
-from .client import LSPClient
 from ..utils.logging import get_logger
-
+from .client import LSPClient
 
 logger = get_logger(__name__)
 
 
 class ObjCLSPServer:
     """Objective-C Language Server (clangd) manager.
-    
+
     Handles configuration and lifecycle of clangd for Objective-C code
     analysis in KMP projects with iOS implementations.
-    
+
     Attributes:
         client: Underlying LSP client instance
         workspace_path: Path to workspace root
         language_id: Language identifier ("objective-c")
-        
+
     Example:
         >>> server = ObjCLSPServer(workspace_path=Path("/project"))
         >>> await server.start()
         >>> symbols = await server.search_symbols("SharedRepository")
         >>> await server.stop()
     """
-    
+
     def __init__(
         self,
         workspace_path: Path,
-        clangd_path: Optional[str] = None,
-        clangd_args: Optional[List[str]] = None,
+        clangd_path: str | None = None,
+        clangd_args: list[str] | None = None,
     ):
         """Initialize Objective-C LSP server.
-        
+
         Args:
             workspace_path: Path to workspace root (KMP project with iOS code)
             clangd_path: Custom clangd command path (default: auto-detect)
             clangd_args: Additional clangd arguments (default: basic config)
-            
+
         Raises:
             FileNotFoundError: If clangd not found and required
         """
         self.workspace_path = workspace_path
         self.language_id = "objective-c"
-        
+
         # Auto-detect clangd if not provided
         if clangd_path is None:
             clangd_path = self._find_clangd()
-        
+
         self.command = clangd_path
-        
+
         # Default clangd arguments
         if clangd_args is None:
             clangd_args = [
                 "--background-index",  # Build index in background
                 "--header-insertion=never",  # Don't auto-insert headers
             ]
-        
+
         self.args = clangd_args
-        
+
         # Create LSP client with Objective-C-specific configuration
         self.client = LSPClient(
             command=self.command,
@@ -75,13 +73,13 @@ class ObjCLSPServer:
             workspace_path=workspace_path,
             env=self._get_environment_vars(),
         )
-    
+
     def _find_clangd(self) -> str:
         """Find clangd executable.
-        
+
         Returns:
             Path to clangd executable
-            
+
         Raises:
             FileNotFoundError: If server executable not found
         """
@@ -93,38 +91,38 @@ class ObjCLSPServer:
             "/opt/homebrew/bin/clangd",
             "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clangd",
         ]
-        
+
         for candidate in candidates:
             if Path(candidate).exists() or shutil.which(candidate):
                 logger.info(f"Found clangd: {candidate}")
                 return candidate
-        
+
         # If not found, return default and let subprocess fail with better error
         logger.warning("clangd not found in standard locations")
         return "clangd"
-    
-    def _get_environment_vars(self) -> Dict[str, str]:
+
+    def _get_environment_vars(self) -> dict[str, str]:
         """Get environment variables for clangd.
-        
+
         Returns:
             Dictionary of environment variables
         """
         import os
-        
+
         env = os.environ.copy()
-        
+
         # Add Objective-C/clang-specific environment configuration
         # clangd may need DEVELOPER_DIR for Xcode SDK access
         if "DEVELOPER_DIR" not in env:
             xcode_path = "/Applications/Xcode.app/Contents/Developer"
             if Path(xcode_path).exists():
                 env["DEVELOPER_DIR"] = xcode_path
-        
+
         return env
-    
-    def get_initialization_options(self) -> Dict:
+
+    def get_initialization_options(self) -> dict:
         """Get clangd-specific initialization options.
-        
+
         Returns:
             Dictionary of initialization options for clangd
         """
@@ -139,14 +137,14 @@ class ObjCLSPServer:
                 "-fmodules",  # Enable modules
             ]
         }
-    
+
     async def start(self) -> None:
         """Start the clangd server.
-        
+
         Raises:
             RuntimeError: If server fails to start
             asyncio.TimeoutError: If initialization times out
-            
+
         Example:
             >>> await server.start()
         """
@@ -154,26 +152,26 @@ class ObjCLSPServer:
         await self.client.start()
         self.client._initialized = True
         logger.info("clangd started successfully")
-    
+
     async def stop(self) -> None:
         """Stop the clangd server.
-        
+
         Example:
             >>> await server.stop()
         """
         logger.info("Stopping clangd")
         await self.client.stop()
         logger.info("clangd stopped")
-    
+
     def supports_file(self, file_path: Path) -> bool:
         """Check if server supports given file type.
-        
+
         Args:
             file_path: Path to file to check
-            
+
         Returns:
             True if file is an Objective-C file (.m, .h, .mm)
-            
+
         Example:
             >>> server.supports_file(Path("MyClass.m"))
             True
@@ -184,19 +182,19 @@ class ObjCLSPServer:
         """
         suffix = file_path.suffix.lower()
         return suffix in [".m", ".h", ".mm"]
-    
-    async def workspace_symbol(self, query: str) -> List[Dict]:
+
+    async def workspace_symbol(self, query: str) -> list[dict]:
         """Search for symbols in Objective-C files.
-        
+
         Args:
             query: Symbol search query (e.g., "SharedRepository")
-            
+
         Returns:
             List of SymbolInformation dictionaries
-            
+
         Raises:
             RuntimeError: If server is not running
-            
+
         Example:
             >>> symbols = await server.workspace_symbol("Repository")
             >>> for symbol in symbols:
@@ -204,10 +202,10 @@ class ObjCLSPServer:
         """
         if not self.is_running():
             raise RuntimeError("clangd is not running")
-        
+
         # Use client's workspace_symbols method
         symbols = await self.client.workspace_symbols(query)
-        
+
         # Convert to dict format for easier consumption
         return [
             {
@@ -230,21 +228,21 @@ class ObjCLSPServer:
             }
             for sym in symbols
         ]
-    
-    async def goto_definition(self, file_path: Path, position: Dict) -> Optional[Dict]:
+
+    async def goto_definition(self, file_path: Path, position: dict) -> dict | None:
         """Go to definition of symbol at position.
-        
+
         Args:
             file_path: Path to Objective-C file
             position: Position dictionary with 'line' and 'character'
-            
+
         Returns:
             Location dictionary or None if not found
-            
+
         Raises:
             RuntimeError: If server is not running
             ValueError: If file is not an Objective-C file
-            
+
         Example:
             >>> location = await server.goto_definition(
             ...     Path("MyClass.m"),
@@ -253,17 +251,17 @@ class ObjCLSPServer:
         """
         if not self.is_running():
             raise RuntimeError("clangd is not running")
-        
+
         if not self.supports_file(file_path):
             raise ValueError(f"File {file_path} is not an Objective-C file")
-        
+
         # Use client's go_to_definition method
         location = await self.client.go_to_definition(
             file_uri=file_path.as_uri(),
             line=position["line"],
             character=position["character"]
         )
-        
+
         # Convert Location object to dict if found
         if location:
             return {
@@ -280,37 +278,37 @@ class ObjCLSPServer:
                 }
             }
         return None
-    
+
     def is_running(self) -> bool:
         """Check if clangd server is running.
-        
+
         Returns:
             True if server process is active
-            
+
         Example:
             >>> if server.is_running():
             ...     symbols = await server.workspace_symbol("Foo")
         """
         return (
-            self.client.process is not None 
+            self.client.process is not None
             and self.client.process.returncode is None
             and self.client._initialized
         )
-    
-    async def find_references(self, file_path: Path, position: Dict) -> List[Dict]:
+
+    async def find_references(self, file_path: Path, position: dict) -> list[dict]:
         """Find all references to symbol at position.
-        
+
         Args:
             file_path: Path to Objective-C file
             position: Position dictionary with 'line' and 'character'
-            
+
         Returns:
             List of Location dictionaries
-            
+
         Raises:
             RuntimeError: If server is not running
             ValueError: If file is not an Objective-C file
-            
+
         Example:
             >>> refs = await server.find_references(
             ...     Path("MyClass.m"),
@@ -319,10 +317,10 @@ class ObjCLSPServer:
         """
         if not self.is_running():
             raise RuntimeError("clangd is not running")
-        
+
         if not self.supports_file(file_path):
             raise ValueError(f"File {file_path} is not an Objective-C file")
-        
+
         # Use client's find_references method
         locations = await self.client.find_references(
             file_uri=file_path.as_uri(),
@@ -330,7 +328,7 @@ class ObjCLSPServer:
             character=position["character"],
             include_declaration=True
         )
-        
+
         # Convert Location objects to dicts
         return [
             {

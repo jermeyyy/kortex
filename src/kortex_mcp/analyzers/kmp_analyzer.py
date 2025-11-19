@@ -6,13 +6,12 @@ platform-specific code analysis.
 """
 
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from ..models.project import SourceSet, SourceSetType
 from ..utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -20,7 +19,7 @@ logger = get_logger(__name__)
 @dataclass
 class ExpectActualPair:
     """Represents an expect declaration with its actual implementations.
-    
+
     Attributes:
         name: Symbol name (class, function, or property)
         kind: Declaration kind ("class", "function", "property")
@@ -30,21 +29,21 @@ class ExpectActualPair:
     """
     name: str
     kind: str
-    expect_location: Dict[str, Any]
-    actual_locations: Dict[str, Dict[str, Any]]
-    signature: Optional[str] = None
+    expect_location: dict[str, Any]
+    actual_locations: dict[str, dict[str, Any]]
+    signature: str | None = None
 
 
 class KMPAnalyzer:
     """Kotlin Multiplatform project analyzer.
-    
+
     Analyzes KMP project structure, detects expect/actual declarations,
     and provides source set identification and platform-specific code analysis.
-    
+
     Attributes:
         workspace_path: Path to KMP project root
         source_sets: Detected source sets in the project
-        
+
     Example:
         >>> analyzer = KMPAnalyzer(workspace_path=Path("/project"))
         >>> source_set = analyzer.get_source_set_from_path(
@@ -52,17 +51,17 @@ class KMPAnalyzer:
         ... )
         >>> expect_actual = await analyzer.find_expect_actual_pairs("Platform")
     """
-    
+
     def __init__(self, workspace_path: Path):
         """Initialize KMP analyzer.
-        
+
         Args:
             workspace_path: Path to KMP project root
         """
         self.workspace_path = workspace_path
-        self.source_sets: Dict[str, SourceSet] = {}
+        self.source_sets: dict[str, SourceSet] = {}
         self._detect_source_sets()
-    
+
     def _detect_source_sets(self) -> None:
         """Detect all source sets in the project by scanning directory structure."""
         # Common KMP source set patterns
@@ -80,7 +79,7 @@ class KMPAnalyzer:
             ("desktopMain", SourceSetType.DESKTOP),
             ("desktopTest", SourceSetType.DESKTOP),
         ]
-        
+
         # Scan for source set directories
         if self.workspace_path.exists():
             for pattern, source_type in source_set_patterns:
@@ -90,23 +89,23 @@ class KMPAnalyzer:
                     # Look for kotlin subdirectory
                     kotlin_dir = src_dir / "kotlin"
                     source_dirs = [kotlin_dir] if kotlin_dir.exists() else [src_dir]
-                    
+
                     self.source_sets[pattern] = SourceSet(
                         name=pattern,
                         type=source_type,
                         source_dirs=source_dirs
                     )
                     logger.debug(f"Detected source set: {pattern} at {src_dir}")
-    
-    def get_source_set_from_path(self, file_path: Path) -> Optional[SourceSet]:
+
+    def get_source_set_from_path(self, file_path: Path) -> SourceSet | None:
         """Identify source set from file path.
-        
+
         Args:
             file_path: Path to Kotlin file
-            
+
         Returns:
             SourceSet if identified, None otherwise
-            
+
         Example:
             >>> source_set = analyzer.get_source_set_from_path(
             ...     Path("src/commonMain/kotlin/Platform.kt")
@@ -116,7 +115,7 @@ class KMPAnalyzer:
         # Extract source set name from path
         # Expected pattern: .../src/{sourceSetName}/kotlin/...
         parts = file_path.parts
-        
+
         try:
             src_index = parts.index("src")
             if src_index + 1 < len(parts):
@@ -124,77 +123,77 @@ class KMPAnalyzer:
                 return self.source_sets.get(source_set_name)
         except (ValueError, IndexError):
             pass
-        
+
         return None
-    
+
     async def find_expect_declarations(
         self,
-        symbol_name: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        symbol_name: str | None = None
+    ) -> list[dict[str, Any]]:
         """Find expect declarations in commonMain.
-        
+
         Args:
             symbol_name: Optional filter by symbol name
-            
+
         Returns:
             List of expect declarations with location info
-            
+
         Example:
             >>> expects = await analyzer.find_expect_declarations("Platform")
         """
-        expects = []
-        
+        expects: list[dict[str, Any]] = []
+
         # Search in commonMain source set
         common_main = self.source_sets.get("commonMain")
         if not common_main:
             logger.warning("commonMain source set not found")
             return expects
-        
+
         # Scan Kotlin files for expect keyword
         kotlin_files = []
         for source_dir in common_main.source_dirs:
             kotlin_files.extend(list(source_dir.rglob("*.kt")))
-        
+
         for file_path in kotlin_files:
             try:
                 content = file_path.read_text(encoding="utf-8")
                 expect_matches = self._parse_expect_declarations(content, file_path)
-                
+
                 # Filter by symbol name if provided
                 if symbol_name:
                     expect_matches = [
                         m for m in expect_matches if m["name"] == symbol_name
                     ]
-                
+
                 expects.extend(expect_matches)
             except Exception as e:
                 logger.error(f"Error reading file {file_path}: {e}")
-        
+
         return expects
-    
+
     def _parse_expect_declarations(
         self,
         content: str,
         file_path: Path
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Parse expect declarations from Kotlin source code.
-        
+
         Args:
             content: Kotlin source code
             file_path: Path to the file
-            
+
         Returns:
             List of expect declarations with metadata
         """
         expects = []
         lines = content.split("\n")
-        
+
         # Regex patterns for expect declarations
         expect_class_pattern = re.compile(r'^\s*expect\s+class\s+(\w+)')
         expect_fun_pattern = re.compile(r'^\s*expect\s+fun\s+(\w+)')
         expect_val_pattern = re.compile(r'^\s*expect\s+val\s+(\w+)')
         expect_var_pattern = re.compile(r'^\s*expect\s+var\s+(\w+)')
-        
+
         for line_num, line in enumerate(lines, start=1):
             # Check for expect class
             match = expect_class_pattern.search(line)
@@ -207,7 +206,7 @@ class KMPAnalyzer:
                     "signature": line.strip()
                 })
                 continue
-            
+
             # Check for expect function
             match = expect_fun_pattern.search(line)
             if match:
@@ -219,7 +218,7 @@ class KMPAnalyzer:
                     "signature": line.strip()
                 })
                 continue
-            
+
             # Check for expect val/var
             match = expect_val_pattern.search(line) or expect_var_pattern.search(line)
             if match:
@@ -230,23 +229,23 @@ class KMPAnalyzer:
                     "line": line_num,
                     "signature": line.strip()
                 })
-        
+
         return expects
-    
+
     async def find_actual_implementations(
         self,
         symbol_name: str,
         symbol_kind: str
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Find actual implementations for an expect declaration.
-        
+
         Args:
             symbol_name: Name of the symbol
             symbol_kind: Kind of symbol ("class", "function", "property")
-            
+
         Returns:
             Map of source set name to actual declaration location
-            
+
         Example:
             >>> actuals = await analyzer.find_actual_implementations(
             ...     "Platform",
@@ -255,18 +254,18 @@ class KMPAnalyzer:
             >>> print(actuals["androidMain"]["file"])
         """
         actuals = {}
-        
+
         # Search in platform-specific source sets (not commonMain)
         platform_source_sets = {
             name: ss for name, ss in self.source_sets.items()
             if not name.startswith("common")
         }
-        
+
         for source_set_name, source_set in platform_source_sets.items():
             kotlin_files = []
             for source_dir in source_set.source_dirs:
                 kotlin_files.extend(list(source_dir.rglob("*.kt")))
-            
+
             for file_path in kotlin_files:
                 try:
                     content = file_path.read_text(encoding="utf-8")
@@ -276,34 +275,34 @@ class KMPAnalyzer:
                         symbol_name,
                         symbol_kind
                     )
-                    
+
                     if actual_match:
                         actuals[source_set_name] = actual_match
                 except Exception as e:
                     logger.error(f"Error reading file {file_path}: {e}")
-        
+
         return actuals
-    
+
     def _parse_actual_declaration(
         self,
         content: str,
         file_path: Path,
         symbol_name: str,
         symbol_kind: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Parse actual declaration for a specific symbol.
-        
+
         Args:
             content: Kotlin source code
             file_path: Path to the file
             symbol_name: Name of symbol to find
             symbol_kind: Kind of symbol
-            
+
         Returns:
             Actual declaration metadata if found
         """
         lines = content.split("\n")
-        
+
         # Build pattern based on kind
         if symbol_kind == "class":
             pattern = re.compile(rf'^\s*actual\s+class\s+{re.escape(symbol_name)}\b')
@@ -313,7 +312,7 @@ class KMPAnalyzer:
             pattern = re.compile(rf'^\s*actual\s+(val|var)\s+{re.escape(symbol_name)}\b')
         else:
             return None
-        
+
         for line_num, line in enumerate(lines, start=1):
             if pattern.search(line):
                 return {
@@ -323,38 +322,38 @@ class KMPAnalyzer:
                     "line": line_num,
                     "signature": line.strip()
                 }
-        
+
         return None
-    
+
     async def find_expect_actual_pairs(
         self,
-        symbol_name: Optional[str] = None
-    ) -> List[ExpectActualPair]:
+        symbol_name: str | None = None
+    ) -> list[ExpectActualPair]:
         """Find all expect/actual pairs in the project.
-        
+
         Args:
             symbol_name: Optional filter by symbol name
-            
+
         Returns:
             List of ExpectActualPair objects
-            
+
         Example:
             >>> pairs = await analyzer.find_expect_actual_pairs()
             >>> for pair in pairs:
             ...     print(f"{pair.name}: {len(pair.actual_locations)} actuals")
         """
         pairs = []
-        
+
         # Find all expect declarations
         expects = await self.find_expect_declarations(symbol_name)
-        
+
         # For each expect, find its actual implementations
         for expect_decl in expects:
             actuals = await self.find_actual_implementations(
                 expect_decl["name"],
                 expect_decl["kind"]
             )
-            
+
             pair = ExpectActualPair(
                 name=expect_decl["name"],
                 kind=expect_decl["kind"],
@@ -366,23 +365,23 @@ class KMPAnalyzer:
                 actual_locations=actuals,
                 signature=expect_decl.get("signature")
             )
-            
+
             pairs.append(pair)
-        
+
         return pairs
-    
+
     def validate_expect_actual_pair(
         self,
         pair: ExpectActualPair
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """Validate that expect/actual pair is consistent.
-        
+
         Args:
             pair: ExpectActualPair to validate
-            
+
         Returns:
             Tuple of (is_valid, list_of_issues)
-            
+
         Example:
             >>> is_valid, issues = analyzer.validate_expect_actual_pair(pair)
             >>> if not is_valid:
@@ -390,13 +389,13 @@ class KMPAnalyzer:
             ...         print(f"Issue: {issue}")
         """
         issues = []
-        
+
         # Check if any actual implementations exist
         if not pair.actual_locations:
             issues.append(
                 f"No actual implementations found for expect {pair.kind} '{pair.name}'"
             )
-        
+
         # Check signature consistency (basic check)
         # More sophisticated signature validation would require AST parsing
         if pair.signature:
@@ -405,26 +404,26 @@ class KMPAnalyzer:
                 # Remove 'expect' and 'actual' keywords for comparison
                 expect_sig_normalized = pair.signature.replace("expect", "").strip()
                 actual_sig_normalized = actual_sig.replace("actual", "").strip()
-                
+
                 # Basic signature comparison (not perfect, but catches obvious mismatches)
                 if expect_sig_normalized != actual_sig_normalized:
                     issues.append(
                         f"Signature mismatch in {source_set}: "
                         f"expect='{expect_sig_normalized}' vs actual='{actual_sig_normalized}'"
                     )
-        
+
         is_valid = len(issues) == 0
         return is_valid, issues
-    
+
     def is_platform_specific_code(self, file_path: Path) -> bool:
         """Check if file contains platform-specific code.
-        
+
         Args:
             file_path: Path to Kotlin file
-            
+
         Returns:
             True if file is in a platform-specific source set
-            
+
         Example:
             >>> is_platform = analyzer.is_platform_specific_code(
             ...     Path("src/androidMain/kotlin/Android.kt")
@@ -435,13 +434,13 @@ class KMPAnalyzer:
         if source_set:
             return source_set.type != SourceSetType.COMMON
         return False
-    
-    def get_all_source_sets(self) -> List[SourceSet]:
+
+    def get_all_source_sets(self) -> list[SourceSet]:
         """Get all detected source sets in the project.
-        
+
         Returns:
             List of SourceSet objects
-            
+
         Example:
             >>> source_sets = analyzer.get_all_source_sets()
             >>> for ss in source_sets:
@@ -453,17 +452,17 @@ class KMPAnalyzer:
         self,
         file_path: Path,
         class_name: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Find the appropriate insertion point for adding a method to a class.
-        
+
         Analyzes class structure to determine where to insert new methods,
         typically after existing methods but before companion objects or
         nested classes.
-        
+
         Args:
             file_path: Path to Kotlin file containing the class
             class_name: Name of the class to find
-            
+
         Returns:
             Dictionary with insertion details or None if class not found:
             {
@@ -471,7 +470,7 @@ class KMPAnalyzer:
                 "indentation": str,  # Indentation to use
                 "context": str  # Surrounding context
             }
-            
+
         Example:
             >>> point = analyzer.find_class_insertion_point(
             ...     Path("Repository.kt"),
@@ -482,26 +481,26 @@ class KMPAnalyzer:
         if not file_path.exists():
             logger.error(f"File not found: {file_path}")
             return None
-        
+
         try:
             content = file_path.read_text(encoding="utf-8")
             lines = content.split("\n")
-            
+
             # Find class declaration
             class_pattern = re.compile(rf'^\s*(class|interface|object)\s+{re.escape(class_name)}\b')
             class_start_line = None
             class_indentation = ""
-            
+
             for i, line in enumerate(lines):
                 if class_pattern.search(line):
                     class_start_line = i
                     class_indentation = self._get_indentation(line)
                     break
-            
+
             if class_start_line is None:
                 logger.warning(f"Class '{class_name}' not found in {file_path}")
                 return None
-            
+
             # Find class body boundaries
             brace_count = 0
             in_class_body = False
@@ -509,40 +508,40 @@ class KMPAnalyzer:
             last_method_line = None
             companion_start_line = None
             method_indentation = class_indentation + "    "  # Assume 4-space indent
-            
+
             for i in range(class_start_line, len(lines)):
                 line = lines[i]
-                
+
                 # Track braces
                 brace_count += line.count('{') - line.count('}')
-                
+
                 if '{' in line and not in_class_body:
                     in_class_body = True
                     continue
-                
+
                 if in_class_body:
                     # Check for method declarations (fun keyword)
                     if re.search(r'^\s+fun\s+\w+', line):
                         last_method_line = i
                         method_indentation = self._get_indentation(line)
-                    
+
                     # Check for companion object
                     if re.search(r'^\s+companion\s+object', line):
                         companion_start_line = i
                         break
-                    
+
                     # Check for nested class/interface/object
                     if re.search(r'^\s+(class|interface|object)\s+\w+', line):
                         # Stop before nested declarations if no methods found yet
                         if last_method_line is None:
                             class_end_line = i
                         break
-                    
+
                     # End of class body
                     if brace_count == 0:
                         class_end_line = i
                         break
-            
+
             # Determine insertion point
             if companion_start_line is not None:
                 # Insert before companion object
@@ -556,7 +555,7 @@ class KMPAnalyzer:
             else:
                 # Fallback - insert after class declaration
                 insertion_line = class_start_line + 1
-            
+
             return {
                 "line": insertion_line,
                 "indentation": method_indentation,
@@ -564,34 +563,34 @@ class KMPAnalyzer:
                 "class_name": class_name,
                 "file": str(file_path)
             }
-            
+
         except Exception as e:
             logger.error(f"Error finding insertion point in {file_path}: {e}")
             return None
-    
+
     def _get_indentation(self, line: str) -> str:
         """Extract indentation from a line of code.
-        
+
         Args:
             line: Line of code
-            
+
         Returns:
             Leading whitespace (spaces or tabs)
         """
         match = re.match(r'^(\s*)', line)
         return match.group(1) if match else ""
-    
-    def detect_indentation_style(self, file_path: Path) -> Dict[str, Any]:
+
+    def detect_indentation_style(self, file_path: Path) -> dict[str, Any]:
         """Detect indentation style used in a file.
-        
+
         Analyzes existing code to determine:
         - Spaces vs tabs
         - Indent size (2, 4, 8 spaces)
         - Line ending style (LF, CRLF)
-        
+
         Args:
             file_path: Path to Kotlin file
-            
+
         Returns:
             Dictionary with style information:
             {
@@ -599,7 +598,7 @@ class KMPAnalyzer:
                 "size": int,  # Number of spaces per indent level
                 "line_ending": "LF" | "CRLF"
             }
-            
+
         Example:
             >>> style = analyzer.detect_indentation_style(Path("MyClass.kt"))
             >>> print(f"Uses {style['size']} {style['type']}")
@@ -611,22 +610,22 @@ class KMPAnalyzer:
                 "size": 4,
                 "line_ending": "LF"
             }
-        
+
         try:
             with open(file_path, 'rb') as f:
                 content = f.read()
-            
+
             # Detect line ending
             line_ending = "CRLF" if b'\r\n' in content else "LF"
-            
+
             # Decode and analyze indentation
             text = content.decode('utf-8')
             lines = text.split('\n')
-            
+
             # Count indentation patterns
             space_indents = []
             has_tabs = False
-            
+
             for line in lines:
                 if line.startswith('\t'):
                     has_tabs = True
@@ -635,7 +634,7 @@ class KMPAnalyzer:
                     spaces = len(line) - len(line.lstrip(' '))
                     if spaces > 0:
                         space_indents.append(spaces)
-            
+
             # Determine indent type and size
             if has_tabs:
                 return {
@@ -643,11 +642,11 @@ class KMPAnalyzer:
                     "size": 1,
                     "line_ending": line_ending
                 }
-            
+
             # Find most common indent size (GCD of all indents)
             if space_indents:
-                from math import gcd
                 from functools import reduce
+                from math import gcd
                 indent_size = reduce(gcd, space_indents)
                 # Common indent sizes: 2, 4, 8
                 if indent_size in [2, 4, 8]:
@@ -662,13 +661,13 @@ class KMPAnalyzer:
                     size = 8
             else:
                 size = 4  # Default to 4 spaces
-            
+
             return {
                 "type": "spaces",
                 "size": size,
                 "line_ending": line_ending
             }
-            
+
         except Exception as e:
             logger.error(f"Error detecting indentation style: {e}")
             return {
@@ -676,3 +675,43 @@ class KMPAnalyzer:
                 "size": 4,
                 "line_ending": "LF"
             }
+
+    async def find_missing_actuals(self, symbol_name: str) -> list[str]:
+        """Find missing actual implementations for an expect declaration.
+
+        Args:
+            symbol_name: Name of the symbol
+
+        Returns:
+            List of source set names missing implementation
+        """
+        # Find expect declaration
+        expects = await self.find_expect_declarations(symbol_name)
+        if not expects:
+            return []
+            
+        expect_decl = expects[0] # Assume first match
+        
+        # Find actuals
+        actuals = await self.find_actual_implementations(symbol_name, expect_decl["kind"])
+        
+        # Check all platform source sets
+        platform_source_sets = {
+            name for name, ss in self.source_sets.items()
+            if ss.type != SourceSetType.COMMON
+        }
+        
+        implemented_sets = set(actuals.keys())
+        return list(platform_source_sets - implemented_sets)
+
+    def get_platform_for_file(self, file_path: Path) -> SourceSetType | None:
+        """Get platform type for a file.
+
+        Args:
+            file_path: Path to file
+
+        Returns:
+            SourceSetType or None
+        """
+        source_set = self.get_source_set_from_path(file_path)
+        return source_set.type if source_set else None

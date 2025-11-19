@@ -4,22 +4,20 @@ This module provides MCP tools for project onboarding, querying project
 information, and initializing LSP servers based on detected project configuration.
 """
 
-import asyncio
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from ..utils.logging import get_logger
-from ..analyzers.project_analyzer import ProjectAnalyzer, analyze_project, detect_project_type
-from ..storage.project_store import ProjectStore
-from ..models.project import Project, ProjectType
-from ..lsp.manager import LSPManager
+from ..analyzers.project_analyzer import analyze_project, detect_project_type
 from ..lsp.kotlin_server import KotlinLSPServer
-
+from ..lsp.manager import LSPManager
+from ..models.project import ProjectType
+from ..storage.project_store import ProjectStore
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def onboard_project(project_dir: Path) -> Dict[str, Any]:
+async def onboard_project(project_dir: Path) -> dict[str, Any]:
     """Onboard a new KMP/CMP project.
 
     Analyzes the project, detects configuration, stores it, and initializes
@@ -64,7 +62,7 @@ async def onboard_project(project_dir: Path) -> Dict[str, Any]:
     }
 
 
-async def get_project_info(project_dir: Path) -> Dict[str, Any]:
+async def get_project_info(project_dir: Path) -> dict[str, Any]:
     """Get information about a project.
 
     Retrieves project configuration including targets, source sets, and dependencies.
@@ -118,17 +116,17 @@ async def get_project_info(project_dir: Path) -> Dict[str, Any]:
             }
             for ss in project.source_sets.values()
         ],
-        "dependencies": list(set(
+        "dependencies": list({
             dep
             for ss in project.source_sets.values()
             for dep in ss.dependencies
-        )),
+        }),
         "kotlin_version": project.kotlin_version,
         "compose_version": project.compose_version
     }
 
 
-async def initialize_lsp_servers(project_dir: Path) -> Dict[str, Any]:
+async def initialize_lsp_servers(project_dir: Path) -> dict[str, Any]:
     """Initialize LSP servers based on project configuration.
 
     Starts appropriate language servers (Kotlin, Swift, Objective-C) based on
@@ -162,8 +160,8 @@ async def initialize_lsp_servers(project_dir: Path) -> Dict[str, Any]:
     if project.type in (ProjectType.KMP, ProjectType.CMP):
         try:
             kotlin_server = KotlinLSPServer(workspace_path=project_dir)
-            manager = LSPManager()
-            
+            LSPManager()
+
             # Start the Kotlin LSP server
             await kotlin_server.start()
             started_servers.append("kotlin")
@@ -174,14 +172,14 @@ async def initialize_lsp_servers(project_dir: Path) -> Dict[str, Any]:
 
     # Check if we need Swift LSP (for iOS targets)
     has_ios_target = any("ios" in t.platform.lower() for t in project.targets)
-    
+
     if has_ios_target:
         try:
             # Import here to avoid circular dependency
             from ..lsp.swift_server import SwiftLSPServer
-            
+
             swift_server = SwiftLSPServer(workspace_path=project_dir)
-            
+
             # Start the Swift LSP server
             await swift_server.start()
             started_servers.append("swift")
@@ -216,7 +214,8 @@ async def onboard_project_tool(project_path: str) -> str:
         >>> result = await onboard_project_tool("/path/to/project")
     """
     import json
-    
+
+    logger.info(f"Tool 'onboard_project' called for path: {project_path}")
     project_dir = Path(project_path).expanduser().resolve()
     result = await onboard_project(project_dir)
     return json.dumps(result, indent=2)
@@ -235,7 +234,8 @@ async def get_project_info_tool(project_path: str) -> str:
         >>> info = await get_project_info_tool("/path/to/project")
     """
     import json
-    
+
+    logger.info(f"Tool 'get_project_info' called for path: {project_path}")
     project_dir = Path(project_path).expanduser().resolve()
     info = await get_project_info(project_dir)
     return json.dumps(info, indent=2)
@@ -254,10 +254,11 @@ async def list_source_sets_tool(project_path: str) -> str:
         >>> sets = await list_source_sets_tool("/path/to/project")
     """
     import json
-    
+
+    logger.info(f"Tool 'list_source_sets' called for path: {project_path}")
     project_dir = Path(project_path).expanduser().resolve()
     info = await get_project_info(project_dir)
-    
+
     source_sets = info["source_sets"]
     return json.dumps({
         "source_sets": source_sets,
@@ -278,10 +279,11 @@ async def list_targets_tool(project_path: str) -> str:
         >>> targets = await list_targets_tool("/path/to/project")
     """
     import json
-    
+
+    logger.info(f"Tool 'list_targets' called for path: {project_path}")
     project_dir = Path(project_path).expanduser().resolve()
     info = await get_project_info(project_dir)
-    
+
     targets = info["targets"]
     return json.dumps({
         "targets": targets,
@@ -302,10 +304,11 @@ async def detect_project_type_tool(project_path: str) -> str:
         >>> ptype = await detect_project_type_tool("/path/to/project")
     """
     import json
-    
+
+    logger.info(f"Tool 'detect_project_type' called for path: {project_path}")
     project_dir = Path(project_path).expanduser().resolve()
     ptype = detect_project_type(project_dir)
-    
+
     return json.dumps({
         "path": str(project_dir),
         "type": ptype.value,

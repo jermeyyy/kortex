@@ -20,30 +20,34 @@ Example:
 """
 
 from dataclasses import dataclass
-from typing import List
+
 from fastmcp import Context
+
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 async def ask_open_ended(ctx: Context, question: str) -> str:
     """Request information from user in natural language.
-    
+
     Asks a free-form question and collects the user's response.
     This is useful for gathering detailed information, explanations,
     or clarifications that don't fit into predefined options.
-    
+
     Args:
         ctx: FastMCP Context object for elicitation
         question: Detailed but brief question to ask the user
-        
+
     Returns:
         Descriptive string with the result:
         - "User provided: {response}" if accepted
         - "User declined to provide information" if declined
         - "Request cancelled by user" if cancelled
-        
+
     Raises:
         ValueError: If question is empty or whitespace only
-        
+
     Example:
         >>> result = await ask_open_ended(
         ...     ctx,
@@ -52,51 +56,61 @@ async def ask_open_ended(ctx: Context, question: str) -> str:
         >>> # Returns: "User provided: 30 minutes for better UX"
     """
     if not question or not question.strip():
+        logger.error("ask_open_ended called with empty question")
         raise ValueError("Question cannot be empty")
-    
+
+    logger.info(f"Asking open-ended question: '{question}'")
+
     @dataclass
     class UserResponse:
         """Response container for open-ended questions."""
         information: str
-    
-    result = await ctx.elicit(
-        message=question,
-        response_type=UserResponse
-    )
-    
-    if result.action == "accept":
-        return f"User provided: {result.data.information}"
-    elif result.action == "decline":
-        return "User declined to provide information"
-    else:  # cancel
-        return "Request cancelled by user"
+
+    try:
+        result = await ctx.elicit(
+            message=question,
+            response_type=UserResponse  # type: ignore
+        )
+
+        if result.action == "accept":
+            logger.debug(f"User accepted open-ended question. Response length: {len(result.data.information)}")  # type: ignore
+            return f"User provided: {result.data.information}"  # type: ignore
+        elif result.action == "decline":
+            logger.info("User declined open-ended question")
+            return "User declined to provide information"
+        else:  # cancel
+            logger.info("User cancelled open-ended question")
+            return "Request cancelled by user"
+    except Exception as e:
+        logger.error(f"Error in ask_open_ended: {str(e)}", exc_info=True)
+        raise
 
 
 async def ask_single_select(
     ctx: Context,
     question: str,
-    options: List[str]
+    options: list[str]
 ) -> str:
     """Ask user to select one option from provided choices.
-    
+
     Presents the user with multiple options and asks them to select one.
     This is useful for choices between known alternatives, such as
     framework selection, architecture patterns, or implementation approaches.
-    
+
     Args:
         ctx: FastMCP Context object for elicitation
         question: Detailed but brief question to ask the user
         options: List of detailed but brief options for the user to choose from
-        
+
     Returns:
         Descriptive string with the result:
         - "Selected: {option}" if accepted
         - "User declined to select an option" if declined
         - "Selection cancelled by user" if cancelled
-        
+
     Raises:
         ValueError: If question is empty or no options provided
-        
+
     Example:
         >>> result = await ask_single_select(
         ...     ctx,
@@ -106,28 +120,39 @@ async def ask_single_select(
         >>> # Returns: "Selected: Koin"
     """
     if not question or not question.strip():
+        logger.error("ask_single_select called with empty question")
         raise ValueError("Question cannot be empty")
-    
+
     if not options or len(options) == 0:
+        logger.error("ask_single_select called with no options")
         raise ValueError("Options are required for single-select questions")
-    
+
+    logger.info(f"Asking single-select question: '{question}' with {len(options)} options")
+
     @dataclass
     class OptionSelection:
         """Response container for single-select questions."""
         selected_option: str
-    
+
     # Format options for display
     options_text = "\n".join([f"{i+1}. {opt}" for i, opt in enumerate(options)])
     elicitation_message = f"{question}\n\nOptions:\n{options_text}\n\nPlease select an option by entering its number or text:"
-    
-    result = await ctx.elicit(
-        message=elicitation_message,
-        response_type=OptionSelection
-    )
-    
-    if result.action == "accept":
-        return f"Selected: {result.data.selected_option}"
-    elif result.action == "decline":
-        return "User declined to select an option"
-    else:  # cancel
-        return "Selection cancelled by user"
+
+    try:
+        result = await ctx.elicit(
+            message=elicitation_message,
+            response_type=OptionSelection  # type: ignore
+        )
+
+        if result.action == "accept":
+            logger.debug(f"User selected option: {result.data.selected_option}")  # type: ignore
+            return f"Selected: {result.data.selected_option}"  # type: ignore
+        elif result.action == "decline":
+            logger.info("User declined single-select question")
+            return "User declined to select an option"
+        else:
+            logger.info("User cancelled single-select question")
+            return "Selection cancelled by user"
+    except Exception as e:
+        logger.error(f"Error in ask_single_select: {str(e)}", exc_info=True)
+        raise

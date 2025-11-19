@@ -6,16 +6,12 @@ Markdown files following the SpecKit template structure.
 
 import asyncio
 import shutil
-from pathlib import Path
-from typing import List, Optional, Dict
 from datetime import datetime
+from pathlib import Path
 
-from ..utils.logging import get_logger
+from ..models.specification import Requirement, Specification, UserStory
 from ..utils.file_utils import ensure_directory
-from ..models.specification import (
-    Specification, UserStory, Requirement
-)
-
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -47,7 +43,7 @@ class SpecStore:
             storage_path: Directory path for storing specifications
         """
         self.storage_path = storage_path
-        self.specs: Dict[str, Specification] = {}
+        self.specs: dict[str, Specification] = {}
         self._lock = asyncio.Lock()
         self._initialized = False
 
@@ -67,13 +63,13 @@ class SpecStore:
             return
 
         logger.info(f"Initializing spec store at {self.storage_path}")
-        
+
         # Create storage directory
         ensure_directory(self.storage_path)
-        
+
         # Load existing specs
         await self._load_all()
-        
+
         self._initialized = True
         logger.info(f"Spec store initialized with {len(self.specs)} specifications")
 
@@ -86,11 +82,11 @@ class SpecStore:
         for spec_dir in self.storage_path.iterdir():
             if not spec_dir.is_dir():
                 continue
-            
+
             spec_file = spec_dir / "spec.md"
             if not spec_file.exists():
                 continue
-            
+
             try:
                 spec = await self._load_spec_from_file(spec_file)
                 if spec:
@@ -98,7 +94,7 @@ class SpecStore:
             except Exception as e:
                 logger.error(f"Failed to load spec from {spec_file}: {e}")
 
-    async def _load_spec_from_file(self, file_path: Path) -> Optional[Specification]:
+    async def _load_spec_from_file(self, file_path: Path) -> Specification | None:
         """Load specification from Markdown file.
 
         Args:
@@ -117,7 +113,7 @@ class SpecStore:
             logger.error(f"Failed to parse spec file {file_path}: {e}")
             return None
 
-    def _parse_markdown(self, content: str) -> Optional[Specification]:
+    def _parse_markdown(self, content: str) -> Specification | None:
         """Parse Markdown content to Specification object.
 
         Args:
@@ -128,14 +124,14 @@ class SpecStore:
         """
         try:
             lines = content.split('\n')
-            
+
             # Parse title (first line after any leading whitespace)
             title = None
             for line in lines:
                 if line.startswith('# '):
                     title = line[2:].strip()
                     break
-            
+
             if not title:
                 return None
 
@@ -145,7 +141,7 @@ class SpecStore:
             created_at = datetime.now()
             updated_at = datetime.now()
 
-            for i, line in enumerate(lines):
+            for _i, line in enumerate(lines):
                 if line.startswith('**ID**:'):
                     spec_id = line.split(':', 1)[1].strip()
                 elif line.startswith('**Status**:'):
@@ -192,7 +188,7 @@ class SpecStore:
             logger.error(f"Failed to parse markdown: {e}")
             return None
 
-    def _extract_section_content(self, lines: List[str], section_header: str) -> str:
+    def _extract_section_content(self, lines: list[str], section_header: str) -> str:
         """Extract content of a section between headers.
 
         Args:
@@ -204,7 +200,7 @@ class SpecStore:
         """
         content_lines = []
         in_section = False
-        
+
         for line in lines:
             if line.startswith(section_header):
                 in_section = True
@@ -214,10 +210,10 @@ class SpecStore:
                 break
             elif in_section and line.strip():
                 content_lines.append(line)
-        
+
         return '\n'.join(content_lines).strip()
 
-    def _parse_user_stories(self, lines: List[str]) -> List[UserStory]:
+    def _parse_user_stories(self, lines: list[str]) -> list[UserStory]:
         """Parse user stories from Markdown lines.
 
         Args:
@@ -228,19 +224,18 @@ class SpecStore:
         """
         stories = []
         in_stories_section = False
-        current_story = None
         current_story_id = None
         current_story_title = None
-        story_description_lines = []
-        acceptance_criteria = []
+        story_description_lines: list[str] = []
+        acceptance_criteria: list[str] = []
         priority = "P2"
         story_status = "draft"
         in_acceptance_criteria = False
-        
+
         i = 0
         while i < len(lines):
             line = lines[i]
-            
+
             if line.startswith('## User Stories'):
                 in_stories_section = True
                 i += 1
@@ -269,7 +264,7 @@ class SpecStore:
                         acceptance_criteria=acceptance_criteria,
                         status=story_status
                     ))
-                
+
                 # Parse new story header
                 story_header = line[4:].strip()
                 if ':' in story_header:
@@ -297,9 +292,9 @@ class SpecStore:
             elif in_stories_section and line.strip().lower() == "none":
                 # No user stories
                 break
-            
+
             i += 1
-        
+
         # Save last story if exists
         if in_stories_section and current_story_id and current_story_title:
             stories.append(UserStory(
@@ -310,10 +305,10 @@ class SpecStore:
                 acceptance_criteria=acceptance_criteria,
                 status=story_status
             ))
-        
+
         return stories
 
-    def _parse_requirements(self, lines: List[str]) -> List[Requirement]:
+    def _parse_requirements(self, lines: list[str]) -> list[Requirement]:
         """Parse requirements from Markdown lines.
 
         Args:
@@ -326,15 +321,15 @@ class SpecStore:
         in_requirements_section = False
         current_req_id = None
         current_req_title = None
-        req_description_lines = []
+        req_description_lines: list[str] = []
         req_type = "functional"
         rationale = None
         req_status = "draft"
-        
+
         i = 0
         while i < len(lines):
             line = lines[i]
-            
+
             if line.startswith('## Requirements'):
                 in_requirements_section = True
                 i += 1
@@ -367,7 +362,7 @@ class SpecStore:
                             rationale=rationale,
                             status=req_status
                         ))
-                
+
                 # Parse new requirement header
                 req_header = line[4:].strip()
                 if ':' in req_header:
@@ -390,9 +385,9 @@ class SpecStore:
             elif in_requirements_section and line.strip().lower() == "none":
                 # No requirements
                 break
-            
+
             i += 1
-        
+
         # Save last requirement if exists
         if in_requirements_section and current_req_id:
             # Use title as description if no separate description found
@@ -405,10 +400,10 @@ class SpecStore:
                     rationale=rationale,
                     status=req_status
                 ))
-        
+
         return requirements
 
-    def _parse_open_questions(self, lines: List[str]) -> List[str]:
+    def _parse_open_questions(self, lines: list[str]) -> list[str]:
         """Parse open questions from Markdown lines.
 
         Args:
@@ -419,7 +414,7 @@ class SpecStore:
         """
         questions = []
         in_questions_section = False
-        
+
         for line in lines:
             if line.startswith('## Open Questions'):
                 in_questions_section = True
@@ -435,7 +430,7 @@ class SpecStore:
                 question = line[2:].strip()
                 if question:
                     questions.append(question)
-        
+
         return questions
 
     def _get_spec_dir(self, spec_id: str) -> Path:
@@ -470,24 +465,24 @@ class SpecStore:
             Markdown string
         """
         lines = []
-        
+
         # Title
         lines.append(f"# {spec.title}")
         lines.append("")
-        
+
         # Metadata
         lines.append(f"**ID**: {spec.id}")
         lines.append(f"**Status**: {spec.status}")
         lines.append(f"**Created**: {spec.created_at.isoformat()}")
         lines.append(f"**Updated**: {spec.updated_at.isoformat()}")
         lines.append("")
-        
+
         # Description
         lines.append("## Description")
         lines.append("")
         lines.append(spec.description)
         lines.append("")
-        
+
         # User Stories
         lines.append("## User Stories")
         lines.append("")
@@ -508,7 +503,7 @@ class SpecStore:
         else:
             lines.append("None")
             lines.append("")
-        
+
         # Requirements
         lines.append("## Requirements")
         lines.append("")
@@ -525,7 +520,7 @@ class SpecStore:
         else:
             lines.append("None")
             lines.append("")
-        
+
         # Open Questions
         lines.append("## Open Questions")
         lines.append("")
@@ -534,7 +529,7 @@ class SpecStore:
                 lines.append(f"- {question}")
         else:
             lines.append("None")
-        
+
         return '\n'.join(lines)
 
     async def save(self, spec: Specification) -> None:
@@ -561,28 +556,28 @@ class SpecStore:
             try:
                 # Update timestamp
                 spec.updated_at = datetime.now()
-                
+
                 # Create spec directory
                 spec_dir = self._get_spec_dir(spec.id)
                 ensure_directory(spec_dir)
-                
+
                 # Format as markdown
                 markdown = self._format_markdown(spec)
-                
+
                 # Write to file
                 spec_file = self._get_spec_file(spec.id)
                 spec_file.write_text(markdown)
-                
+
                 # Update in-memory cache
                 self.specs[spec.id] = spec
-                
+
                 logger.debug(f"Saved specification: {spec.id}")
-                
+
             except Exception as e:
                 logger.error(f"Failed to save specification {spec.id}: {e}")
-                raise IOError(f"Failed to save specification: {e}") from e
+                raise OSError(f"Failed to save specification: {e}") from e
 
-    async def load(self, spec_id: str) -> Optional[Specification]:
+    async def load(self, spec_id: str) -> Specification | None:
         """Load a specification from storage.
 
         Args:
@@ -597,7 +592,7 @@ class SpecStore:
         spec_file = self._get_spec_file(spec_id)
         return await self._load_spec_from_file(spec_file)
 
-    async def get(self, spec_id: str) -> Optional[Specification]:
+    async def get(self, spec_id: str) -> Specification | None:
         """Get a specification by ID from cache.
 
         Args:
@@ -614,7 +609,7 @@ class SpecStore:
         async with self._lock:
             return self.specs.get(spec_id)
 
-    async def list_all(self, status: Optional[str] = None) -> List[Specification]:
+    async def list_all(self, status: str | None = None) -> list[Specification]:
         """List all specifications.
 
         Args:
@@ -629,13 +624,13 @@ class SpecStore:
         """
         async with self._lock:
             specs = list(self.specs.values())
-            
+
             if status:
                 specs = [s for s in specs if s.status == status]
-            
+
             return specs
 
-    async def list_by_status(self, status: str) -> List[Specification]:
+    async def list_by_status(self, status: str) -> list[Specification]:
         """List specifications by status.
 
         Args:
@@ -670,22 +665,22 @@ class SpecStore:
                 spec_dir = self._get_spec_dir(spec_id)
                 if spec_dir.exists():
                     shutil.rmtree(spec_dir)
-                
+
                 # Remove from cache
                 del self.specs[spec_id]
                 logger.debug(f"Deleted specification: {spec_id}")
                 return True
-                
+
             except Exception as e:
                 logger.error(f"Failed to delete specification {spec_id}: {e}")
                 return False
 
     async def search(
         self,
-        title_contains: Optional[str] = None,
-        description_contains: Optional[str] = None,
-        status: Optional[str] = None
-    ) -> List[Specification]:
+        title_contains: str | None = None,
+        description_contains: str | None = None,
+        status: str | None = None
+    ) -> list[Specification]:
         """Search specifications by various criteria.
 
         Search is case-insensitive.
@@ -707,25 +702,25 @@ class SpecStore:
         """
         async with self._lock:
             results = list(self.specs.values())
-            
+
             # Filter by title
             if title_contains:
                 title_lower = title_contains.lower()
                 results = [
-                    s for s in results 
+                    s for s in results
                     if title_lower in s.title.lower()
                 ]
-            
+
             # Filter by description
             if description_contains:
                 desc_lower = description_contains.lower()
                 results = [
-                    s for s in results 
+                    s for s in results
                     if desc_lower in s.description.lower()
                 ]
-            
+
             # Filter by status
             if status:
                 results = [s for s in results if s.status == status]
-            
+
             return results

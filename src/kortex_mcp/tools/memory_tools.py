@@ -4,17 +4,18 @@ This module provides MCP tools for storing, querying, and applying
 project memories to enhance AI assistance with project-specific knowledge.
 """
 
-from pathlib import Path
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 from ..models.memory import (
-    Memory, MemoryCategory, MemoryQuery, MemoryStats,
-    create_memory_id, validate_memory
+    Memory,
+    MemoryCategory,
+    MemoryQuery,
+    create_memory_id,
 )
 from ..storage.memory_store import MemoryStore
 from ..utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -72,10 +73,10 @@ class MemoryTools:
         category: str,
         title: str,
         content: str,
-        tags: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        memory_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        memory_id: str | None = None,
+    ) -> dict[str, Any]:
         """Store a new memory or update an existing one.
 
         Args:
@@ -111,7 +112,7 @@ class MemoryTools:
             valid_categories = [c.value for c in MemoryCategory]
             raise ValueError(
                 f"Invalid category '{category}'. Must be one of: {', '.join(valid_categories)}"
-            )
+            ) from None
 
         # Create or get memory ID
         if memory_id is None:
@@ -119,7 +120,7 @@ class MemoryTools:
 
         # Check if updating existing memory
         existing = await self.store.get(memory_id)
-        
+
         if existing:
             # Update existing memory
             existing.title = title
@@ -157,11 +158,11 @@ class MemoryTools:
 
     async def query_memory(
         self,
-        category: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        search_text: Optional[str] = None,
-        limit: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        category: str | None = None,
+        tags: list[str] | None = None,
+        search_text: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
         """Query memories with filtering and search.
 
         Args:
@@ -194,7 +195,7 @@ class MemoryTools:
                 valid_categories = [c.value for c in MemoryCategory]
                 raise ValueError(
                     f"Invalid category '{category}'. Must be one of: {', '.join(valid_categories)}"
-                )
+                ) from None
 
         if tags:
             query.tags = tags
@@ -232,8 +233,8 @@ class MemoryTools:
 
     async def list_memories(
         self,
-        category: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        category: str | None = None,
+    ) -> dict[str, Any]:
         """List all memories, optionally filtered by category.
 
         Args:
@@ -256,7 +257,7 @@ class MemoryTools:
                 valid_categories = [c.value for c in MemoryCategory]
                 raise ValueError(
                     f"Invalid category '{category}'. Must be one of: {', '.join(valid_categories)}"
-                )
+                ) from None
 
             memories = await self.store.list_by_category(mem_category)
         else:
@@ -281,7 +282,7 @@ class MemoryTools:
             "memories": results,
         }
 
-    async def get_memory(self, memory_id: str) -> Dict[str, Any]:
+    async def get_memory(self, memory_id: str) -> dict[str, Any]:
         """Get a specific memory by ID.
 
         Args:
@@ -321,7 +322,7 @@ class MemoryTools:
             },
         }
 
-    async def delete_memory(self, memory_id: str) -> Dict[str, Any]:
+    async def delete_memory(self, memory_id: str) -> dict[str, Any]:
         """Delete a memory.
 
         Args:
@@ -347,7 +348,7 @@ class MemoryTools:
         else:
             raise ValueError(f"Memory not found: {memory_id}")
 
-    async def get_memory_stats(self) -> Dict[str, Any]:
+    async def get_memory_stats(self) -> dict[str, Any]:
         """Get statistics about stored memories.
 
         Returns:
@@ -379,9 +380,9 @@ class MemoryTools:
     async def apply_memories_to_context(
         self,
         context_type: str,
-        context_keywords: Optional[List[str]] = None,
+        context_keywords: list[str] | None = None,
         limit: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Retrieve relevant memories to enrich AI context.
 
         This function helps apply project-specific knowledge to AI suggestions
@@ -406,7 +407,7 @@ class MemoryTools:
         """
         await self.initialize()
 
-        relevant_memories: List[Memory] = []
+        relevant_memories: list[Memory] = []
 
         # Try to map context_type to category
         category_mapping = {
@@ -481,7 +482,7 @@ class MemoryTools:
             "message": f"Found {len(memories_data)} relevant memories for {context_type} context",
         }
 
-    async def clear_all_memories(self) -> Dict[str, Any]:
+    async def clear_all_memories(self) -> dict[str, Any]:
         """Clear all stored memories.
 
         **Warning**: This operation cannot be undone.

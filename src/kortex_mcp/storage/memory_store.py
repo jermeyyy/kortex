@@ -4,19 +4,20 @@ This module provides persistent storage for project memories using
 JSON files.
 """
 
+import asyncio
 import json
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import asyncio
-from datetime import datetime
 
-from ..utils.logging import get_logger
-from ..utils.file_utils import ensure_directory
 from ..models.memory import (
-    Memory, MemoryCategory, MemoryQuery, MemoryStats,
-    validate_memory, create_memory_id
+    Memory,
+    MemoryCategory,
+    MemoryQuery,
+    MemoryStats,
+    create_memory_id,
+    validate_memory,
 )
-
+from ..utils.file_utils import ensure_directory
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -47,7 +48,7 @@ class MemoryStore:
             storage_path: Directory path for storing memories
         """
         self.storage_path = storage_path
-        self.memories: Dict[str, Memory] = {}
+        self.memories: dict[str, Memory] = {}
         self._lock = asyncio.Lock()
         self._initialized = False
 
@@ -64,13 +65,13 @@ class MemoryStore:
             >>> await store.initialize()
         """
         logger.info(f"Initializing memory store at {self.storage_path}")
-        
+
         # Create storage directory
         ensure_directory(self.storage_path)
-        
+
         # Load existing memories
         await self._load_all()
-        
+
         self._initialized = True
         logger.info(f"Memory store initialized with {len(self.memories)} memories")
 
@@ -81,7 +82,7 @@ class MemoryStore:
 
         # Get all JSON files
         memory_files = list(self.storage_path.glob("*.json"))
-        
+
         for file_path in memory_files:
             try:
                 # Read JSON file (synchronous is fine for local files)
@@ -133,14 +134,14 @@ class MemoryStore:
 
     def _save_unlocked(self, memory: Memory) -> None:
         """Internal save method without locking (assumes lock is held).
-        
+
         Args:
             memory: Memory to save
         """
         # Save to disk
         file_path = self._get_memory_path(memory.id)
         data = memory.to_dict()
-        
+
         try:
             # Write JSON file (synchronous is fine for local files)
             file_path.write_text(json.dumps(data, indent=2))
@@ -149,9 +150,9 @@ class MemoryStore:
             logger.debug(f"Saved memory: {memory.id}")
         except Exception as e:
             logger.error(f"Failed to save memory {memory.id}: {e}")
-            raise IOError(f"Failed to save memory: {e}") from e
+            raise OSError(f"Failed to save memory: {e}") from e
 
-    async def get(self, memory_id: str) -> Optional[Memory]:
+    async def get(self, memory_id: str) -> Memory | None:
         """Get a memory by ID.
 
         Updates access timestamp and count.
@@ -169,13 +170,13 @@ class MemoryStore:
         """
         async with self._lock:
             memory = self.memories.get(memory_id)
-            
+
             if memory:
                 # Update access tracking
                 memory.update_access()
                 # Save updated memory using internal method (lock already held)
                 self._save_unlocked(memory)
-            
+
             return memory
 
     async def delete(self, memory_id: str) -> bool:
@@ -199,17 +200,17 @@ class MemoryStore:
             try:
                 if file_path.exists():
                     file_path.unlink()
-                
+
                 # Remove from cache
                 del self.memories[memory_id]
                 logger.debug(f"Deleted memory: {memory_id}")
                 return True
-                
+
             except Exception as e:
                 logger.error(f"Failed to delete memory {memory_id}: {e}")
                 return False
 
-    async def search(self, query: MemoryQuery) -> List[Memory]:
+    async def search(self, query: MemoryQuery) -> list[Memory]:
         """Search for memories matching query criteria.
 
         Args:
@@ -259,7 +260,7 @@ class MemoryStore:
     async def list_by_category(
         self,
         category: MemoryCategory
-    ) -> List[Memory]:
+    ) -> list[Memory]:
         """List all memories in a category.
 
         Args:
@@ -274,7 +275,7 @@ class MemoryStore:
         query = MemoryQuery(category=category)
         return await self.search(query)
 
-    async def list_by_tags(self, tags: List[str]) -> List[Memory]:
+    async def list_by_tags(self, tags: list[str]) -> list[Memory]:
         """List memories matching any of the given tags.
 
         Args:
@@ -289,7 +290,7 @@ class MemoryStore:
         query = MemoryQuery(tags=tags)
         return await self.search(query)
 
-    async def get_all(self) -> List[Memory]:
+    async def get_all(self) -> list[Memory]:
         """Get all memories.
 
         Returns:
@@ -313,7 +314,7 @@ class MemoryStore:
         """
         async with self._lock:
             # Count by category
-            by_category: Dict[MemoryCategory, int] = {}
+            by_category: dict[MemoryCategory, int] = {}
             for memory in self.memories.values():
                 by_category[memory.category] = by_category.get(memory.category, 0) + 1
 
@@ -365,8 +366,8 @@ class MemoryStore:
         category: MemoryCategory,
         title: str,
         content: str,
-        tags: Optional[List[str]] = None,
-        memory_id: Optional[str] = None,
+        tags: list[str] | None = None,
+        memory_id: str | None = None,
     ) -> Memory:
         """Create a new memory or update existing one.
 
@@ -393,7 +394,7 @@ class MemoryStore:
 
         # Check if memory exists
         existing = await self.get(memory_id)
-        
+
         if existing:
             # Update existing
             existing.title = title

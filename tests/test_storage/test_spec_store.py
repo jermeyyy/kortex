@@ -10,17 +10,18 @@ Tests cover SpecStore operations including:
 - Error handling and concurrent access
 """
 
-import pytest
 import asyncio
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import patch
 
-from kortex_mcp.storage.spec_store import SpecStore
+import pytest
+
 from kortex_mcp.models.specification import (
-    Specification, UserStory, Requirement, ElicitationQuestion,
-    QuestionType, PlatformContext
+    Requirement,
+    Specification,
+    UserStory,
 )
+from kortex_mcp.storage.spec_store import SpecStore
 
 
 @pytest.mark.unit
@@ -345,7 +346,7 @@ class TestSpecStoreSave:
         )
 
         # Mock file write to raise IOError
-        with patch("pathlib.Path.write_text", side_effect=IOError("Disk full")):
+        with patch("pathlib.Path.write_text", side_effect=OSError("Disk full")):
             with pytest.raises(IOError, match="Failed to save specification"):
                 await store.save(spec)
 
@@ -730,7 +731,7 @@ class TestSpecStoreDelete:
         await store.save(spec)
 
         # Mock file removal to raise error
-        with patch("shutil.rmtree", side_effect=IOError("Permission denied")):
+        with patch("shutil.rmtree", side_effect=OSError("Permission denied")):
             result = await store.delete("SPEC-001")
 
             # Should return False but not crash
