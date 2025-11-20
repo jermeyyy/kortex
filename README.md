@@ -10,6 +10,26 @@ Code assistant MCP server for Kotlin Multiplatform (KMP) and Compose Multiplatfo
 
 Kortex is an MCP (Model Context Protocol) server that provides AI coding assistants with advanced capabilities for working with Kotlin Multiplatform and Compose Multiplatform projects. It combines LSP-based symbolic code analysis with project-aware navigation, cross-platform understanding, and intelligent code editing.
 
+## Project Status
+
+**Overall Status**: 93/134 tasks complete (69%)
+
+### Completed Features
+- ✅ **LSP Symbol Navigation** (User Story 1)
+- ✅ **Cross-Platform Understanding** (User Story 2)
+- ✅ **Project Onboarding** (User Story 3)
+- ✅ **Editing Mode** (User Story 7)
+- ✅ **Memory System** (User Story 4)
+- ✅ **Interactive User Elicitation** (User Story 5)
+- ✅ **Planning Mode** (User Story 6)
+
+### Upcoming Features
+- 🚧 **CMP UI Pattern Recognition** (User Story 8)
+- 🚧 **Polish & Cross-Cutting** (Phase 11)
+
+### MVP Status
+- **MVP Completion**: 100% (4 of 4 P1 stories done)
+
 ### Key Features
 
 - **LSP-Based Symbol Navigation**: Search, navigate, and analyze code symbols across all KMP source sets (commonMain, androidMain, iosMain, etc.)
