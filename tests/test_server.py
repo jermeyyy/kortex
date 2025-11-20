@@ -1,6 +1,5 @@
 """Tests for Kortex MCP server"""
 
-import pytest
 
 
 def test_placeholder() -> None:

@@ -18,7 +18,14 @@ Kortex is an MCP (Model Context Protocol) server that provides AI coding assista
 - **Symbolic Code Editing**: Precise code modifications using symbol-level operations via LSP
 - **Memory System**: Store and retrieve project-specific knowledge, patterns, and preferences
 - **Planning Mode**: Create and refine specifications with SpecKit integration
+- **User Elicitation**: Interactive questioning to resolve ambiguities in requirements
 - **CMP Pattern Recognition**: Understand Compose Multiplatform-specific patterns (composables, navigation, state management)
+
+## Documentation
+
+- [User Guide](docs/README.md): Detailed installation and usage instructions.
+- [API Documentation](docs/API.md): Complete reference for all MCP tools.
+- [Contributing](CONTRIBUTING.md): Guidelines for contributing to Kortex.
 
 ## Setup
 

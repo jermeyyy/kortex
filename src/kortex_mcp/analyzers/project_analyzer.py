@@ -6,14 +6,12 @@ detection, and extraction of project metadata.
 """
 
 import asyncio
-from pathlib import Path
-from typing import List, Optional, Dict
 import re
+from pathlib import Path
 
+from ..models.project import Project, ProjectType
+from ..utils.gradle_parser import parse_build_file
 from ..utils.logging import get_logger
-from ..utils.gradle_parser import GradleParser, parse_build_file
-from ..models.project import Project, ProjectType, SourceSet, Target
-
 
 logger = get_logger(__name__)
 
@@ -72,7 +70,7 @@ class ProjectAnalyzer:
 
         # Analyze the root build file
         root_build_file = self._find_root_build_file(build_files)
-        
+
         if not root_build_file:
             logger.warning("No root build file found")
             return self._create_unknown_project()
@@ -115,7 +113,7 @@ class ProjectAnalyzer:
 
         return project
 
-    async def _find_build_files(self) -> List[Path]:
+    async def _find_build_files(self) -> list[Path]:
         """Find all build.gradle.kts files in the project.
 
         Returns:
@@ -128,7 +126,7 @@ class ProjectAnalyzer:
         build_files = []
 
         # Use asyncio to scan directory
-        def scan_dir(directory: Path) -> List[Path]:
+        def scan_dir(directory: Path) -> list[Path]:
             found = []
             try:
                 for item in directory.iterdir():
@@ -148,7 +146,7 @@ class ProjectAnalyzer:
         build_files = await asyncio.to_thread(scan_dir, self.project_dir)
         return build_files
 
-    def _find_root_build_file(self, build_files: List[Path]) -> Optional[Path]:
+    def _find_root_build_file(self, build_files: list[Path]) -> Path | None:
         """Find the root build.gradle.kts file from a list of build files.
 
         Args:
@@ -169,7 +167,7 @@ class ProjectAnalyzer:
         # If no direct child, return the first one
         return build_files[0] if build_files else None
 
-    def _detect_project_type(self, plugins: List[str]) -> ProjectType:
+    def _detect_project_type(self, plugins: list[str]) -> ProjectType:
         """Detect project type from plugin list.
 
         Args:
@@ -222,7 +220,7 @@ class ProjectAnalyzer:
         # Fall back to directory name
         return self.project_dir.name
 
-    def _extract_versions(self, plugins: List[str]) -> Dict[str, str]:
+    def _extract_versions(self, plugins: list[str]) -> dict[str, str]:
         """Extract version information from plugins.
 
         Args:
@@ -331,7 +329,7 @@ def detect_project_type(project_dir: Path) -> ProjectType:
     return ProjectType.UNKNOWN
 
 
-def find_build_files(project_dir: Path) -> List[Path]:
+def find_build_files(project_dir: Path) -> list[Path]:
     """Find all build.gradle.kts files in a project directory.
 
     Synchronous function to locate build files.

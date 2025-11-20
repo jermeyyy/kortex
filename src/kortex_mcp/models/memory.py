@@ -5,9 +5,9 @@ project-specific knowledge, patterns, decisions, and preferences.
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class MemoryCategory(Enum):
@@ -71,9 +71,9 @@ class Memory:
     created_at: datetime = field(default_factory=datetime.now)
     last_accessed: datetime = field(default_factory=datetime.now)
     access_count: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert memory to dictionary for serialization.
 
         Returns:
@@ -96,7 +96,7 @@ class Memory:
         }
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "Memory":
+    def from_dict(data: dict[str, Any]) -> "Memory":
         """Create Memory from dictionary.
 
         Args:
@@ -202,10 +202,10 @@ class MemoryQuery:
         ...     limit=10
         ... )
     """
-    category: Optional[MemoryCategory] = None
+    category: MemoryCategory | None = None
     tags: list[str] = field(default_factory=list)
-    query: Optional[str] = None
-    limit: Optional[int] = None
+    query: str | None = None
+    limit: int | None = None
     sort_by: str = "last_accessed"
     ascending: bool = False
 
@@ -254,11 +254,11 @@ class MemoryStats:
         ... )
     """
     total_memories: int
-    by_category: Dict[MemoryCategory, int]
+    by_category: dict[MemoryCategory, int]
     most_accessed: list[Memory] = field(default_factory=list)
     recent_memories: list[Memory] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert stats to dictionary.
 
         Returns:
@@ -303,10 +303,10 @@ def validate_memory(memory: Memory) -> list[str]:
         errors.append("Memory content is required")
 
     if not isinstance(memory.category, MemoryCategory):
-        errors.append("Invalid memory category")
+        errors.append("Invalid memory category")  # type: ignore
 
     if not isinstance(memory.tags, list):
-        errors.append("Tags must be a list")
+        errors.append("Tags must be a list")  # type: ignore
 
     return errors
 

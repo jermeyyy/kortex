@@ -5,9 +5,8 @@ and their locations in source files.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional, List
 from enum import Enum
+from pathlib import Path
 
 
 class SymbolKind(Enum):
@@ -62,8 +61,8 @@ class CodeLocation:
     file_path: Path
     line: int
     column: int = 0
-    end_line: Optional[int] = None
-    end_column: Optional[int] = None
+    end_line: int | None = None
+    end_column: int | None = None
 
     def __str__(self) -> str:
         """String representation of location.
@@ -117,9 +116,9 @@ class Symbol:
     name: str
     kind: SymbolKind
     location: CodeLocation
-    container_name: Optional[str] = None
-    detail: Optional[str] = None
-    documentation: Optional[str] = None
+    container_name: str | None = None
+    detail: str | None = None
+    documentation: str | None = None
 
     def __str__(self) -> str:
         """String representation of symbol.
@@ -219,7 +218,7 @@ class SymbolSearchResult:
         ...     total_count=2
         ... )
     """
-    symbols: List[Symbol]
+    symbols: list[Symbol]
     query: str
     total_count: int
 

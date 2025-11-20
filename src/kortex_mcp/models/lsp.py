@@ -5,8 +5,8 @@ requests and responses.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Union
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -23,7 +23,7 @@ class Position:
     line: int
     character: int
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -49,7 +49,7 @@ class Range:
     start: Position
     end: Position
 
-    def to_dict(self) -> Dict[str, Dict[str, int]]:
+    def to_dict(self) -> dict[str, dict[str, int]]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -78,7 +78,7 @@ class Location:
     uri: str
     range: Range
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -118,7 +118,7 @@ class TextDocumentIdentifier:
     """
     uri: str
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -146,7 +146,7 @@ class TextDocumentPositionParams:
     textDocument: TextDocumentIdentifier
     position: Position
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -179,10 +179,10 @@ class SymbolInformation:
     name: str
     kind: int
     location: Location
-    containerName: Optional[str] = None
+    containerName: str | None = None
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "SymbolInformation":
+    def from_dict(data: dict[str, Any]) -> "SymbolInformation":
         """Create from LSP protocol dictionary.
 
         Args:
@@ -193,7 +193,7 @@ class SymbolInformation:
         """
         location_data = data["location"]
         range_data = location_data["range"]
-        
+
         return SymbolInformation(
             name=data["name"],
             kind=data["kind"],
@@ -228,7 +228,7 @@ class ReferenceParams:
     position: Position
     includeDeclaration: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -255,9 +255,9 @@ class WorkspaceEdit:
         ...     }
         ... )
     """
-    changes: Dict[str, List["TextEdit"]]
+    changes: dict[str, list["TextEdit"]]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to LSP protocol dictionary.
 
         Returns:
@@ -288,7 +288,7 @@ class TextEdit:
     range: Range
     newText: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to LSP protocol dictionary.
 
         Returns:

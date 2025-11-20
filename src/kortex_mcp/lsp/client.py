@@ -6,17 +6,19 @@ managing, and communicating with language servers via JSON-RPC.
 
 import asyncio
 import json
-from pathlib import Path
-from typing import Optional, Dict, Any, List
 from asyncio.subprocess import Process
+from pathlib import Path
+from typing import Any
 
-from ..utils.logging import get_logger
 from ..models.lsp import (
-    Position, Range, Location, TextDocumentIdentifier,
-    TextDocumentPositionParams, SymbolInformation, ReferenceParams,
-    TextEdit, WorkspaceEdit
+    Location,
+    Position,
+    Range,
+    SymbolInformation,
+    TextEdit,
+    WorkspaceEdit,
 )
-
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -47,9 +49,9 @@ class LSPClient:
     def __init__(
         self,
         command: str,
-        args: Optional[List[str]] = None,
-        workspace_path: Optional[Path] = None,
-        env: Optional[Dict[str, str]] = None,
+        args: list[str] | None = None,
+        workspace_path: Path | None = None,
+        env: dict[str, str] | None = None,
     ):
         """Initialize LSP client.
 
@@ -63,10 +65,10 @@ class LSPClient:
         self.args = args or []
         self.workspace_path = workspace_path
         self.env = env
-        self.process: Optional[Process] = None
+        self.process: Process | None = None
         self.request_id = 0
-        self.pending_requests: Dict[int, asyncio.Future] = {}
-        self._read_task: Optional[asyncio.Task] = None
+        self.pending_requests: dict[int, asyncio.Future] = {}
+        self._read_task: asyncio.Task | None = None
         self._initialized = False
 
     async def start(self) -> None:
@@ -80,7 +82,7 @@ class LSPClient:
             >>> await client.start()
         """
         logger.info(f"Starting LSP server: {self.command} {' '.join(self.args)}")
-        
+
         try:
             self.process = await asyncio.create_subprocess_exec(
                 self.command,
@@ -108,7 +110,7 @@ class LSPClient:
             >>> await client.stop()
         """
         logger.info("Stopping LSP server")
-        
+
         if not self.process:
             return
 
@@ -146,7 +148,7 @@ class LSPClient:
             RuntimeError: If initialization fails
         """
         workspace_uri = f"file://{self.workspace_path}" if self.workspace_path else None
-        
+
         init_params = {
             "processId": None,
             "rootUri": workspace_uri,
@@ -171,16 +173,16 @@ class LSPClient:
         try:
             response = await self._send_request("initialize", init_params)
             logger.debug(f"Initialize response: {response}")
-            
+
             # Send initialized notification
             await self._send_notification("initialized", {})
             self._initialized = True
-            
+
         except Exception as e:
             logger.error(f"LSP initialization failed: {e}")
             raise RuntimeError(f"LSP initialization failed: {e}") from e
 
-    async def _send_request(self, method: str, params: Dict[str, Any]) -> Any:
+    async def _send_request(self, method: str, params: dict[str, Any]) -> Any:
         """Send JSON-RPC request and wait for response.
 
         Args:
@@ -221,11 +223,11 @@ class LSPClient:
         except asyncio.TimeoutError:
             self.pending_requests.pop(request_id, None)
             raise
-        except Exception as e:
+        except Exception:
             self.pending_requests.pop(request_id, None)
             raise
 
-    async def _send_notification(self, method: str, params: Dict[str, Any]) -> None:
+    async def _send_notification(self, method: str, params: dict[str, Any]) -> None:
         """Send JSON-RPC notification (no response expected).
 
         Args:
@@ -246,7 +248,7 @@ class LSPClient:
 
         await self._write_message(message)
 
-    async def _write_message(self, message: Dict[str, Any]) -> None:
+    async def _write_message(self, message: dict[str, Any]) -> None:
         """Write JSON-RPC message to server stdin.
 
         Args:
@@ -260,7 +262,7 @@ class LSPClient:
 
         content = json.dumps(message)
         content_bytes = content.encode("utf-8")
-        
+
         header = f"Content-Length: {len(content_bytes)}\r\n\r\n"
         header_bytes = header.encode("utf-8")
 
@@ -280,13 +282,13 @@ class LSPClient:
                     line = await self.process.stdout.readline()
                     if not line:
                         return
-                    
-                    line = line.decode("utf-8").strip()
-                    if not line:
+
+                    line_str = line.decode("utf-8").strip()
+                    if not line_str:
                         break
-                    
-                    if ":" in line:
-                        key, value = line.split(":", 1)
+
+                    if ":" in line_str:
+                        key, value = line_str.split(":", 1)
                         headers[key.strip()] = value.strip()
 
                 # Read content
@@ -296,7 +298,7 @@ class LSPClient:
 
                 content_bytes = await self.process.stdout.readexactly(content_length)
                 content = content_bytes.decode("utf-8")
-                
+
                 try:
                     message = json.loads(content)
                     await self._handle_message(message)
@@ -308,7 +310,7 @@ class LSPClient:
         except Exception as e:
             logger.error(f"Error reading LSP responses: {e}")
 
-    async def _handle_message(self, message: Dict[str, Any]) -> None:
+    async def _handle_message(self, message: dict[str, Any]) -> None:
         """Handle incoming message from server.
 
         Args:
@@ -318,7 +320,7 @@ class LSPClient:
             # Response to a request
             request_id = message["id"]
             future = self.pending_requests.pop(request_id, None)
-            
+
             if future and not future.done():
                 if "error" in message:
                     error = message["error"]
@@ -335,7 +337,7 @@ class LSPClient:
                 params = message.get("params", {})
                 logger.debug(f"Server message: {method} - {params}")
 
-    async def workspace_symbols(self, query: str) -> List[SymbolInformation]:
+    async def workspace_symbols(self, query: str) -> list[SymbolInformation]:
         """Search for symbols in the workspace.
 
         Args:
@@ -353,7 +355,7 @@ class LSPClient:
             raise RuntimeError("LSP client not initialized")
 
         result = await self._send_request("workspace/symbol", {"query": query})
-        
+
         if not result:
             return []
 
@@ -364,7 +366,7 @@ class LSPClient:
         file_uri: str,
         line: int,
         character: int
-    ) -> Optional[Location]:
+    ) -> Location | None:
         """Get definition location for symbol at position.
 
         Args:
@@ -429,7 +431,7 @@ class LSPClient:
         line: int,
         character: int,
         include_declaration: bool = True
-    ) -> List[Location]:
+    ) -> list[Location]:
         """Find all references to symbol at position.
 
         Args:
@@ -469,7 +471,7 @@ class LSPClient:
 
         return [self._parse_location(item) for item in result]
 
-    async def document_symbols(self, file_uri: str) -> List[SymbolInformation]:
+    async def document_symbols(self, file_uri: str) -> list[SymbolInformation]:
         """Get all symbols in a document.
 
         Args:
@@ -521,7 +523,7 @@ class LSPClient:
 
         return symbols
 
-    def _parse_location(self, data: Dict[str, Any]) -> Location:
+    def _parse_location(self, data: dict[str, Any]) -> Location:
         """Parse Location from LSP response dictionary.
 
         Args:
@@ -557,7 +559,7 @@ class LSPClient:
         line: int,
         character: int,
         new_name: str
-    ) -> Optional[WorkspaceEdit]:
+    ) -> WorkspaceEdit | None:
         """Rename symbol at position using LSP.
 
         Args:
@@ -665,7 +667,7 @@ class LSPClient:
 
         except Exception as e:
             logger.error(f"Error applying workspace edit: {e}")
-            raise IOError(f"Failed to apply workspace edit: {e}") from e
+            raise OSError(f"Failed to apply workspace edit: {e}") from e
 
     async def did_change_document(
         self,
@@ -711,7 +713,7 @@ class LSPClient:
             }
         )
 
-    async def notify(self, method: str, params: Dict[str, Any]) -> None:
+    async def notify(self, method: str, params: dict[str, Any]) -> None:
         """Send JSON-RPC notification (no response expected).
 
         Args:

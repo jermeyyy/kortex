@@ -10,15 +10,10 @@ NOTE: These tests are written BEFORE implementation (TDD approach)
 and will FAIL until T068-T076 are implemented.
 """
 
-import pytest
-from pathlib import Path
-from typing import Optional
-from unittest.mock import Mock, patch, AsyncMock
 
-from kortex_mcp.lsp.client import LSPClient
-from kortex_mcp.lsp.manager import LSPManager
-from kortex_mcp.analyzers.kmp_analyzer import KMPAnalyzer
-from kortex_mcp.models.lsp import Position, Range, Location
+import pytest
+
+from kortex_mcp.models.lsp import Position, Range
 
 
 @pytest.mark.integration
@@ -44,7 +39,7 @@ class TestAddMethodOperation:
         # 2. Determine insertion point (after last method, before companion object)
         # 3. Insert method with proper indentation
         # 4. Return location of inserted method
-        
+
         # T072 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -60,7 +55,7 @@ class TestAddMethodOperation:
         #     // <-- New method here
         #     companion object { }
         # }
-        
+
         # T072 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -68,7 +63,7 @@ class TestAddMethodOperation:
         """Test that added method matches existing code indentation."""
         # Should analyze existing indentation (spaces vs tabs, indent level)
         # and apply same style to new method
-        
+
         # T075 COMPLETE - detect_indentation_style() implemented
         pytest.skip("Requires running LSP server - integration test")
 
@@ -77,7 +72,7 @@ class TestAddMethodOperation:
         # Given: class MyClass { }
         # When: Adding first method
         # Then: Method inserted with proper indentation inside class body
-        
+
         # T072 COMPLETE - add_method() implemented
         pytest.skip("Requires running LSP server - integration test")
 
@@ -85,7 +80,7 @@ class TestAddMethodOperation:
         """Test error handling when target class doesn't exist."""
         # Expected: Clear error message indicating class not found
         # Should suggest similar class names if available
-        
+
         # T072 COMPLETE - add_method() implemented with error handling
         pytest.skip("Requires running LSP server - integration test")
 
@@ -95,7 +90,7 @@ class TestAddMethodOperation:
         # - Missing parentheses
         # - Invalid return types
         # - Malformed parameters
-        
+
         pytest.skip("Optional validation - may be implemented later")
 
 
@@ -120,7 +115,7 @@ class TestRenameSymbolOperation:
         # 2. Get all locations that need updates
         # 3. Apply edits to all files
         # 4. Return summary of changes
-        
+
         # T073 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -129,7 +124,7 @@ class TestRenameSymbolOperation:
         # Given: Symbol used in commonMain, androidMain, iosMain
         # When: Renaming symbol
         # Then: All references in all source sets updated
-        
+
         # T073 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -139,7 +134,7 @@ class TestRenameSymbolOperation:
         # When: Renaming Kotlin class
         # Then: Swift references are identified (may need manual update)
         # Should at least warn user about Swift usage
-        
+
         # T073 COMPLETE - Requires cross-language LSP integration
         pytest.skip("Requires running Kotlin + Swift LSP servers - integration test")
 
@@ -149,7 +144,7 @@ class TestRenameSymbolOperation:
         # - Starting with number
         # - Containing spaces
         # - Kotlin reserved keywords
-        
+
         # T073 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -157,7 +152,7 @@ class TestRenameSymbolOperation:
         """Test rename detects if new name conflicts with existing symbol."""
         # Should check if new name already exists in same scope
         # and warn or reject if conflict detected
-        
+
         # T073 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -173,7 +168,7 @@ class TestRenameSymbolOperation:
         #     ],
         #     "total_changes": 5
         # }
-        
+
         # T073 COMPLETE - Requires LSP integration testing
         pytest.skip("Requires running LSP server - integration test")
 
@@ -188,7 +183,7 @@ class TestExpectActualConsistency:
         # Given: expect class Platform with actual implementations
         # When: Adding method to expect declaration
         # Then: System detects actuals need updating and prompts user
-        
+
         # T074 COMPLETE - validate_expect_actual_consistency() implemented
         pytest.skip("Requires KMP project with expect/actual - integration test")
 
@@ -199,7 +194,7 @@ class TestExpectActualConsistency:
         # - Parameter type mismatches
         # - Return type mismatches
         # - Access modifier differences
-        
+
         # T074 COMPLETE - validate_expect_actual_consistency() implemented
         pytest.skip("Requires KMP project with expect/actual - integration test")
 
@@ -209,7 +204,7 @@ class TestExpectActualConsistency:
         # 1. Add method to expect declaration
         # 2. Analyze all actual implementations
         # 3. Either auto-add to actuals or warn user
-        
+
         # T074 COMPLETE - validate_expect_actual_consistency() implemented
         pytest.skip("Requires KMP project with expect/actual - integration test")
 
@@ -218,7 +213,7 @@ class TestExpectActualConsistency:
         # Given: expect class Foo with actual implementations
         # When: Renaming Foo to Bar
         # Then: All actual class Foo also renamed to actual class Bar
-        
+
         # T074 COMPLETE - validate_expect_actual_consistency() implemented
         pytest.skip("Requires KMP project with expect/actual - integration test")
 
@@ -228,7 +223,7 @@ class TestExpectActualConsistency:
         # - Expect still has matching actuals
         # - Signatures still match
         # - No orphaned declarations
-        
+
         # T074 COMPLETE - validate_expect_actual_consistency() implemented
         pytest.skip("Requires KMP project with expect/actual - integration test")
 
@@ -244,7 +239,7 @@ class TestFormattingPreservation:
         # - Spaces vs tabs
         # - Indent size (2, 4, 8 spaces)
         # And apply same style to new code
-        
+
         # T075 COMPLETE - detect_indentation_style() implemented
         pytest.skip("Requires Kotlin files with various indentation - integration test")
 
@@ -258,14 +253,14 @@ class TestFormattingPreservation:
         # K&R style: fun foo() {
         # Allman style: fun foo()
         #               {
-        
+
         # T075 COMPLETE - _format_method() preserves brace style
         pytest.skip("Requires Kotlin files with various brace styles - integration test")
 
     async def test_preserves_spacing_around_operators(self):
         """Test spacing style around operators is maintained."""
         # val x = 1 + 2  vs  val x=1+2
-        
+
         # T075 COMPLETE - formatting preservation implemented
         pytest.skip("Requires Kotlin files with various spacing - integration test")
 
@@ -273,7 +268,7 @@ class TestFormattingPreservation:
         """Test integration with ktlint if configured in project."""
         # Optional: If .editorconfig or ktlint config present,
         # apply those rules to new code
-        
+
         pytest.skip("Optional feature - may be implemented later")
 
 
@@ -287,9 +282,9 @@ class TestCodeEditOperations:
         # TextEdit should have:
         # - range: Range (start/end positions)
         # - newText: str
-        
+
         # T068 COMPLETE - TextEdit model exists in models/lsp.py
-        from kortex_mcp.models.lsp import TextEdit, Range, Position
+        from kortex_mcp.models.lsp import TextEdit
         text_edit = TextEdit(
             range=Range(Position(0, 0), Position(0, 10)),
             newText="new text"
@@ -301,7 +296,7 @@ class TestCodeEditOperations:
         # WorkspaceEdit should have:
         # - changes: Dict[str, List[TextEdit]] (uri -> edits)
         # - documentChanges: Optional list
-        
+
         # T068 COMPLETE - WorkspaceEdit model exists in models/lsp.py
         from kortex_mcp.models.lsp import WorkspaceEdit
         workspace_edit = WorkspaceEdit(changes={})
@@ -312,14 +307,14 @@ class TestCodeEditOperations:
         # Given: File content and TextEdit
         # When: Applying edit
         # Then: Content modified at specified range
-        
+
         # T068 COMPLETE - apply_workspace_edit() implemented in LSP client
         pytest.skip("Requires running LSP server - integration test")
 
     async def test_apply_multiple_edits_to_file(self):
         """Test applying multiple edits to same file."""
         # Edits should be applied in order (or simultaneously if non-overlapping)
-        
+
         # T068 COMPLETE - apply_workspace_edit() handles multiple edits
         pytest.skip("Requires running LSP server - integration test")
 
@@ -329,9 +324,8 @@ class TestCodeEditOperations:
         # - Negative positions
         # - End before start
         # - Position beyond file length
-        
+
         # T068 COMPLETE - Position and Range validation in models
-        from kortex_mcp.models.lsp import Position, Range
         # Positions can be created with any values - LSP server validates
         pos1 = Position(0, 0)
         pos2 = Position(10, 5)
@@ -351,7 +345,7 @@ class TestEditingToolsIntegration:
         # 1. Add method "oldMethodName"
         # 2. Rename to "newMethodName"
         # 3. Verify method exists with new name
-        
+
         # T072 and T073 COMPLETE - Requires full LSP integration test
         pytest.skip("Requires running LSP server with KMP project - integration test")
 
@@ -362,7 +356,7 @@ class TestEditingToolsIntegration:
         # 2. Validate that actuals are flagged as incomplete
         # 3. Add method to actuals
         # 4. Validate expect/actual pairs are consistent
-        
+
         # T072 and T074 COMPLETE - Requires full LSP integration test
         pytest.skip("Requires running LSP server with KMP project - integration test")
 
@@ -372,7 +366,7 @@ class TestEditingToolsIntegration:
         # - Multiple files simultaneously
         # - Different source sets
         # - Import statements
-        
+
         # T073 COMPLETE - Requires full LSP integration test
         pytest.skip("Requires running LSP server with KMP project - integration test")
 
@@ -380,5 +374,5 @@ class TestEditingToolsIntegration:
         """Test that edit operations can be undone."""
         # Optional: Maintain edit history for undo
         # Or rely on version control
-        
+
         pytest.skip("Optional feature - undo may rely on external VCS")

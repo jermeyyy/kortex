@@ -7,13 +7,12 @@ different log levels and formatted output.
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 
 def setup_logging(
     level: int = logging.INFO,
-    log_file: Optional[Path] = None,
-    format_string: Optional[str] = None,
+    log_file: Path | None = None,
+    format_string: str | None = None,
 ) -> None:
     """Configure logging for the application.
 
@@ -30,7 +29,7 @@ def setup_logging(
     if format_string is None:
         format_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]
 
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)

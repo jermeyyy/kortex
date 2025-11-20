@@ -9,16 +9,15 @@ for comprehensive Kotlin Multiplatform project analysis.
 """
 
 import asyncio
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, List, Any, Union
-from datetime import datetime, timedelta
+from typing import Any
 
 from ..utils.logging import get_logger
 from .client import LSPClient
 from .kotlin_server import KotlinLSPServer
-from .swift_server import SwiftLSPServer
 from .objc_server import ObjCLSPServer
-
+from .swift_server import SwiftLSPServer
 
 logger = get_logger(__name__)
 
@@ -58,21 +57,21 @@ class LSPManager:
             health_check_interval: Seconds between health checks
             max_restart_attempts: Maximum restart attempts per server
         """
-        self.clients: Dict[str, LSPClient] = {}
+        self.clients: dict[str, LSPClient] = {}
         self.health_check_interval = health_check_interval
         self.max_restart_attempts = max_restart_attempts
-        self.restart_counts: Dict[str, int] = {}
-        self.last_health_check: Dict[str, datetime] = {}
-        self._health_check_task: Optional[asyncio.Task] = None
+        self.restart_counts: dict[str, int] = {}
+        self.last_health_check: dict[str, datetime] = {}
+        self._health_check_task: asyncio.Task | None = None
         self._running = False
 
     async def start_server(
         self,
         language_id: str,
         command: str,
-        args: Optional[List[str]] = None,
-        workspace_path: Optional[Path] = None,
-        env: Optional[Dict[str, str]] = None,
+        args: list[str] | None = None,
+        workspace_path: Path | None = None,
+        env: dict[str, str] | None = None,
     ) -> None:
         """Start a language server instance.
 
@@ -98,7 +97,7 @@ class LSPManager:
             raise ValueError(f"Language server '{language_id}' already exists")
 
         logger.info(f"Starting language server: {language_id}")
-        
+
         client = LSPClient(
             command=command,
             args=args,
@@ -111,12 +110,12 @@ class LSPManager:
             self.clients[language_id] = client
             self.restart_counts[language_id] = 0
             self.last_health_check[language_id] = datetime.now()
-            
+
             # Start health check task if not running
             if not self._health_check_task and not self._running:
                 self._running = True
                 self._health_check_task = asyncio.create_task(self._health_check_loop())
-            
+
             logger.info(f"Language server started: {language_id}")
         except Exception as e:
             logger.error(f"Failed to start language server '{language_id}': {e}")
@@ -137,7 +136,7 @@ class LSPManager:
             return
 
         logger.info(f"Stopping language server: {language_id}")
-        
+
         try:
             await client.stop()
         except Exception as e:
@@ -156,9 +155,9 @@ class LSPManager:
             >>> await manager.stop_all()
         """
         logger.info("Stopping all language servers")
-        
+
         self._running = False
-        
+
         # Cancel health check task
         if self._health_check_task:
             self._health_check_task.cancel()
@@ -175,7 +174,7 @@ class LSPManager:
 
         logger.info("All language servers stopped")
 
-    def get_client(self, language_id: str) -> Optional[LSPClient]:
+    def get_client(self, language_id: str) -> LSPClient | None:
         """Get a language server client by ID.
 
         Args:
@@ -233,7 +232,7 @@ class LSPManager:
             return False
 
         logger.info(f"Restarting language server: {language_id} (attempt {restart_count + 1})")
-        
+
         # Save configuration
         command = client.command
         args = client.args
@@ -252,13 +251,13 @@ class LSPManager:
                 workspace_path=workspace_path,
                 env=env,
             )
-            
+
             # Increment restart count
             self.restart_counts[language_id] = restart_count + 1
-            
+
             logger.info(f"Language server restarted successfully: {language_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to restart language server '{language_id}': {e}")
             self.restart_counts[language_id] = restart_count + 1
@@ -294,27 +293,27 @@ class LSPManager:
     async def _health_check_loop(self) -> None:
         """Continuous health check loop for all servers."""
         logger.info("Starting health check loop")
-        
+
         try:
             while self._running:
                 await asyncio.sleep(self.health_check_interval)
-                
+
                 if not self._running:
-                    break
+                    break  # type: ignore
 
                 # Check all servers
                 language_ids = list(self.clients.keys())
                 for language_id in language_ids:
                     try:
                         is_healthy = await self.health_check(language_id)
-                        
+
                         if not is_healthy:
                             logger.warning(
                                 f"Health check failed for '{language_id}', "
                                 "attempting restart"
                             )
                             await self.restart_server(language_id)
-                            
+
                     except Exception as e:
                         logger.error(
                             f"Error during health check for '{language_id}': {e}"
@@ -327,7 +326,7 @@ class LSPManager:
         finally:
             logger.info("Health check loop stopped")
 
-    def get_all_clients(self) -> Dict[str, LSPClient]:
+    def get_all_clients(self) -> dict[str, LSPClient]:
         """Get all active language server clients.
 
         Returns:
@@ -339,7 +338,7 @@ class LSPManager:
         """
         return dict(self.clients)
 
-    def get_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_status(self) -> dict[str, dict[str, Any]]:
         """Get status information for all language servers.
 
         Returns:
@@ -361,7 +360,7 @@ class LSPManager:
     async def start_kotlin_server(
         self,
         workspace_path: Path,
-        server_command: Optional[str] = None,
+        server_command: str | None = None,
     ) -> None:
         """Start Kotlin Language Server.
 
@@ -382,7 +381,7 @@ class LSPManager:
             workspace_path=workspace_path,
             server_command=server_command
         )
-        
+
         await self.start_server(
             language_id="kotlin",
             command=kotlin_server.server_command,
@@ -394,7 +393,7 @@ class LSPManager:
     async def start_swift_server(
         self,
         workspace_path: Path,
-        sourcekit_path: Optional[str] = None,
+        sourcekit_path: str | None = None,
     ) -> None:
         """Start Swift Language Server (SourceKit-LSP).
 
@@ -415,7 +414,7 @@ class LSPManager:
             workspace_path=workspace_path,
             sourcekit_path=sourcekit_path
         )
-        
+
         await self.start_server(
             language_id="swift",
             command=swift_server.command,
@@ -427,8 +426,8 @@ class LSPManager:
     async def start_objc_server(
         self,
         workspace_path: Path,
-        clangd_path: Optional[str] = None,
-        clangd_args: Optional[List[str]] = None,
+        clangd_path: str | None = None,
+        clangd_args: list[str] | None = None,
     ) -> None:
         """Start Objective-C Language Server (clangd).
 
@@ -451,7 +450,7 @@ class LSPManager:
             clangd_path=clangd_path,
             clangd_args=clangd_args
         )
-        
+
         await self.start_server(
             language_id="objective-c",
             command=objc_server.command,
@@ -490,14 +489,14 @@ class LSPManager:
             ... )
         """
         logger.info(f"Starting language servers for KMP project: {workspace_path}")
-        
+
         # Always start Kotlin server for KMP
         try:
             await self.start_kotlin_server(workspace_path)
         except Exception as e:
             logger.error(f"Failed to start Kotlin server: {e}")
             # Continue to try other servers
-        
+
         # Optionally start Swift server
         if include_swift:
             try:
@@ -505,7 +504,7 @@ class LSPManager:
             except Exception as e:
                 logger.warning(f"Failed to start Swift server: {e}")
                 # Not critical, continue
-        
+
         # Optionally start Objective-C server
         if include_objc:
             try:
@@ -513,5 +512,5 @@ class LSPManager:
             except Exception as e:
                 logger.warning(f"Failed to start Objective-C server: {e}")
                 # Not critical, continue
-        
+
         logger.info("Language server initialization complete")

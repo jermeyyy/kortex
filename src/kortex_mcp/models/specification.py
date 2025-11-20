@@ -5,9 +5,9 @@ and interactive user elicitation questions used in planning mode.
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class QuestionType(Enum):
@@ -68,12 +68,12 @@ class ElicitationQuestion:
     """
     question: str
     question_type: QuestionType
-    options: List[str] = field(default_factory=list)
-    response: Optional[str | List[str]] = None
-    context: Optional[str] = None
-    platform_context: Optional[PlatformContext] = None
-    category: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    options: list[str] = field(default_factory=list)
+    response: str | list[str] | None = None
+    context: str | None = None
+    platform_context: PlatformContext | None = None
+    category: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
 
     def validate(self) -> bool:
@@ -140,9 +140,9 @@ class ElicitationQuestion:
                 return False
             return all(isinstance(r, str) and r in self.options for r in self.response)
 
-        return False
+        return False  # type: ignore
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert question to dictionary for serialization.
 
         Returns:
@@ -166,7 +166,7 @@ class ElicitationQuestion:
         }
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> "ElicitationQuestion":
+    def from_dict(data: dict[str, Any]) -> "ElicitationQuestion":
         """Create ElicitationQuestion from dictionary.
 
         Args:
@@ -184,7 +184,7 @@ class ElicitationQuestion:
             >>> question = ElicitationQuestion.from_dict(data)
         """
         created_at = datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now()
-        
+
         platform_context = None
         if data.get("platform_context"):
             platform_context = PlatformContext(data["platform_context"])
@@ -228,9 +228,9 @@ class UserStory:
     title: str
     description: str
     priority: str = "P2"
-    acceptance_criteria: List[str] = field(default_factory=list)
+    acceptance_criteria: list[str] = field(default_factory=list)
     status: str = "draft"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -259,10 +259,10 @@ class Requirement:
     id: str
     type: str
     description: str
-    rationale: Optional[str] = None
-    user_stories: List[str] = field(default_factory=list)
+    rationale: str | None = None
+    user_stories: list[str] = field(default_factory=list)
     status: str = "draft"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -275,7 +275,7 @@ class Specification:
         description: High-level description
         user_stories: List of user stories
         requirements: List of requirements
-        elicitation_questions: Questions asked during planning
+        open_questions: Questions that need answers during refinement
         status: Specification status
         created_at: Creation timestamp
         updated_at: Last update timestamp
@@ -293,15 +293,15 @@ class Specification:
     id: str
     title: str
     description: str
-    user_stories: List[UserStory] = field(default_factory=list)
-    requirements: List[Requirement] = field(default_factory=list)
-    elicitation_questions: List[ElicitationQuestion] = field(default_factory=list)
+    user_stories: list[UserStory] = field(default_factory=list)
+    requirements: list[Requirement] = field(default_factory=list)
+    open_questions: list[str] = field(default_factory=list)
     status: str = "draft"
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert specification to dictionary.
 
         Returns:
@@ -335,7 +335,7 @@ class Specification:
                 }
                 for r in self.requirements
             ],
-            "elicitation_questions": [q.to_dict() for q in self.elicitation_questions],
+            "open_questions": self.open_questions,
             "status": self.status,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),

@@ -1,17 +1,18 @@
 """Pytest configuration and fixtures for Kortex tests."""
 
 import asyncio
-import pytest
-from pathlib import Path
-from typing import AsyncGenerator, Generator
-import tempfile
 import shutil
+import tempfile
+from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
+
+import pytest
 
 from kortex_mcp.lsp.client import LSPClient
 from kortex_mcp.lsp.manager import LSPManager
+from kortex_mcp.models.project import Project, ProjectType, SourceSet, SourceSetType
 from kortex_mcp.storage.memory_store import MemoryStore
 from kortex_mcp.storage.project_store import ProjectStore
-from kortex_mcp.models.project import Project, SourceSet, ProjectType, SourceSetType
 
 
 @pytest.fixture
@@ -39,29 +40,37 @@ def fixtures_dir() -> Path:
 
 
 @pytest.fixture
-def sample_kmp_project(fixtures_dir: Path) -> Path:
-    """Get path to sample KMP project fixture.
+def sample_kmp_project(fixtures_dir: Path, temp_dir: Path) -> Generator[Path, None, None]:
+    """Get path to sample KMP project fixture (copied to temp dir).
 
     Args:
         fixtures_dir: Fixtures directory path
+        temp_dir: Temporary directory path
 
-    Returns:
-        Path to sample KMP project
+    Yields:
+        Path to sample KMP project in temp dir
     """
-    return fixtures_dir / "sample_kmp_project"
+    source = fixtures_dir / "sample_kmp_project"
+    dest = temp_dir / "sample_kmp_project"
+    shutil.copytree(source, dest)
+    yield dest
 
 
 @pytest.fixture
-def sample_cmp_project(fixtures_dir: Path) -> Path:
-    """Get path to sample CMP project fixture.
+def sample_cmp_project(fixtures_dir: Path, temp_dir: Path) -> Generator[Path, None, None]:
+    """Get path to sample CMP project fixture (copied to temp dir).
 
     Args:
         fixtures_dir: Fixtures directory path
+        temp_dir: Temporary directory path
 
-    Returns:
-        Path to sample CMP project
+    Yields:
+        Path to sample CMP project in temp dir
     """
-    return fixtures_dir / "sample_cmp_project"
+    source = fixtures_dir / "sample_cmp_project"
+    dest = temp_dir / "sample_cmp_project"
+    shutil.copytree(source, dest)
+    yield dest
 
 
 @pytest.fixture
@@ -179,8 +188,8 @@ class MockLSPClient(LSPClient):
     async def workspace_symbols(self, query: str) -> list:
         """Mock workspace_symbols method."""
         # Return some mock symbols
-        from kortex_mcp.models.lsp import SymbolInformation, Location, Range, Position
-        
+        from kortex_mcp.models.lsp import Location, Position, Range, SymbolInformation
+
         return [
             SymbolInformation(
                 name="Repository",

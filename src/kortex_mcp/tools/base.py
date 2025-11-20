@@ -5,12 +5,12 @@ MCP tools in the Kortex server.
 """
 
 import asyncio
-from typing import Any, Dict, Optional, Callable
-from functools import wraps
+from collections.abc import Callable
 from datetime import datetime
+from functools import wraps
+from typing import Any
 
 from ..utils.logging import get_logger
-
 
 logger = get_logger(__name__)
 
@@ -27,8 +27,8 @@ class ToolError(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
-        tool_name: Optional[str] = None
+        details: dict[str, Any] | None = None,
+        tool_name: str | None = None
     ):
         """Initialize tool error.
 
@@ -42,13 +42,13 @@ class ToolError(Exception):
         self.details = details or {}
         self.tool_name = tool_name
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert error to dictionary.
 
         Returns:
             Dictionary with error information
         """
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "error": self.message,
             "details": self.details,
         }
@@ -92,7 +92,7 @@ class ToolValidationError(ToolError):
         )
 
 
-def with_timeout(timeout: float = 30.0):
+def with_timeout(timeout: float = 30.0) -> Callable[[Callable], Callable]:
     """Decorator to add timeout to async tool functions.
 
     Args:
@@ -108,7 +108,7 @@ def with_timeout(timeout: float = 30.0):
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await asyncio.wait_for(
                     func(*args, **kwargs),
@@ -117,12 +117,12 @@ def with_timeout(timeout: float = 30.0):
             except asyncio.TimeoutError:
                 tool_name = func.__name__
                 logger.error(f"Tool '{tool_name}' timed out after {timeout}s")
-                raise ToolTimeout(tool_name, timeout)
+                raise ToolTimeout(tool_name, timeout) from None
         return wrapper
     return decorator
 
 
-def with_error_handling(tool_name: str):
+def with_error_handling(tool_name: str) -> Callable[[Callable], Callable]:
     """Decorator to add error handling to tool functions.
 
     Catches exceptions and converts them to ToolError.
@@ -141,7 +141,7 @@ def with_error_handling(tool_name: str):
     """
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await func(*args, **kwargs)
             except ToolError:
@@ -176,28 +176,27 @@ def log_tool_execution(func: Callable) -> Callable:
         ...     pass
     """
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         tool_name = func.__name__
         start_time = datetime.now()
-        
+
         logger.info(f"Starting tool: {tool_name}")
         logger.debug(f"Tool args: {args}, kwargs: {kwargs}")
-        
+
         try:
             result = await func(*args, **kwargs)
-            
+
             duration = (datetime.now() - start_time).total_seconds()
             logger.info(f"Tool '{tool_name}' completed in {duration:.2f}s")
-            
+
             return result
-            
+
         except Exception as e:
             duration = (datetime.now() - start_time).total_seconds()
             logger.error(
                 f"Tool '{tool_name}' failed after {duration:.2f}s: {e}"
             )
             raise
-    
     return wrapper
 
 
@@ -259,7 +258,7 @@ class BaseTool:
         """
         raise NotImplementedError("Subclasses must implement execute()")
 
-    def validate_params(self, params: Dict[str, Any]) -> None:
+    def validate_params(self, params: dict[str, Any]) -> None:
         """Validate tool parameters.
 
         Override this method to add parameter validation.
@@ -285,35 +284,35 @@ class BaseTool:
             ToolError: If tool execution fails
         """
         start_time = datetime.now()
-        
+
         self.logger.info(f"Running tool: {self.name}")
         self.logger.debug(f"Parameters: {kwargs}")
-        
+
         try:
             # Validate parameters
             self.validate_params(kwargs)
-            
+
             # Execute with timeout
             result = await asyncio.wait_for(
                 self.execute(**kwargs),
                 timeout=self.timeout
             )
-            
+
             duration = (datetime.now() - start_time).total_seconds()
             self.logger.info(f"Tool '{self.name}' completed in {duration:.2f}s")
-            
+
             return result
-            
+
         except asyncio.TimeoutError:
             self.logger.error(
                 f"Tool '{self.name}' timed out after {self.timeout}s"
             )
-            raise ToolTimeout(self.name, self.timeout)
-            
+            raise ToolTimeout(self.name, self.timeout) from None
+
         except ToolError:
             # Re-raise tool errors
             raise
-            
+
         except Exception as e:
             duration = (datetime.now() - start_time).total_seconds()
             self.logger.error(

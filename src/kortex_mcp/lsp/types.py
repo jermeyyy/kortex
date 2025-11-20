@@ -6,13 +6,19 @@ working with LSP data structures.
 """
 
 from pathlib import Path
-from typing import Dict, Any, Optional, List
 from urllib.parse import quote, unquote
 
 from ..models.lsp import (
-    Position, Range, Location, TextDocumentIdentifier,
-    TextDocumentPositionParams, SymbolInformation, ReferenceParams,
-    WorkspaceEdit, TextEdit, LSPSymbolKind
+    Location,
+    LSPSymbolKind,
+    Position,
+    Range,
+    ReferenceParams,
+    SymbolInformation,
+    TextDocumentIdentifier,
+    TextDocumentPositionParams,
+    TextEdit,
+    WorkspaceEdit,
 )
 
 
@@ -32,10 +38,10 @@ def path_to_uri(path: Path) -> str:
     # Convert to absolute path and ensure forward slashes
     abs_path = path.resolve()
     path_str = abs_path.as_posix()
-    
+
     # Encode special characters but keep forward slashes
     encoded = quote(path_str, safe='/')
-    
+
     # Add file:// prefix
     return f"file://{encoded}"
 
@@ -56,10 +62,10 @@ def uri_to_path(uri: str) -> Path:
     # Remove file:// prefix
     if uri.startswith("file://"):
         uri = uri[7:]
-    
+
     # Decode URL encoding
     decoded = unquote(uri)
-    
+
     return Path(decoded)
 
 
@@ -258,12 +264,12 @@ def format_symbol_info(symbol: SymbolInformation) -> str:
     path = uri_to_path(symbol.location.uri)
     line = symbol.location.range.start.line + 1  # Convert to 1-based
     char = symbol.location.range.start.character + 1  # Convert to 1-based
-    
+
     result = f"{symbol.name} ({kind}) at {path}:{line}:{char}"
-    
+
     if symbol.containerName:
         result = f"{result} in {symbol.containerName}"
-    
+
     return result
 
 
@@ -284,16 +290,16 @@ def format_location(location: Location) -> str:
     path = uri_to_path(location.uri)
     start = location.range.start
     end = location.range.end
-    
+
     start_line = start.line + 1  # Convert to 1-based
     start_char = start.character + 1
     end_line = end.line + 1
     end_char = end.character + 1
-    
+
     return f"{path}:{start_line}:{start_char}-{end_line}:{end_char}"
 
 
-def parse_location_string(location_str: str) -> Optional[tuple[Path, int, int]]:
+def parse_location_string(location_str: str) -> tuple[Path, int, int] | None:
     """Parse location string to path, line, and character.
 
     Args:
@@ -312,11 +318,11 @@ def parse_location_string(location_str: str) -> Optional[tuple[Path, int, int]]:
         parts = location_str.rsplit(':', 2)
         if len(parts) != 3:
             return None
-        
+
         path = Path(parts[0])
         line = int(parts[1]) - 1  # Convert to 0-based
         char = int(parts[2]) - 1  # Convert to 0-based
-        
+
         return (path, line, char)
     except (ValueError, IndexError):
         return None
@@ -351,7 +357,7 @@ def create_text_edit(
 
 
 def create_workspace_edit(
-    edits_by_file: Dict[Path, List[TextEdit]]
+    edits_by_file: dict[Path, list[TextEdit]]
 ) -> WorkspaceEdit:
     """Create WorkspaceEdit from file paths and edits.
 
@@ -422,13 +428,13 @@ def position_to_offset(text: str, position: Position) -> int:
     """
     lines = text.split('\n')
     offset = 0
-    
+
     # Add length of all lines before target line
     for i in range(min(position.line, len(lines))):
         offset += len(lines[i]) + 1  # +1 for newline
-    
+
     # Add character offset within target line
     if position.line < len(lines):
         offset += min(position.character, len(lines[position.line]))
-    
+
     return offset
