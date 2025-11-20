@@ -6,6 +6,7 @@ and lifecycle management for the Kortex coding assistant.
 
 from pathlib import Path
 from typing import Any
+from contextlib import asynccontextmanager
 
 from fastmcp import Context, FastMCP
 
@@ -14,16 +15,27 @@ from .storage.memory_store import MemoryStore
 from .storage.project_store import ProjectStore
 from .storage.spec_store import SpecStore
 from .tools import elicitation_tools, project_tools
+from .tools.base import ToolError
 from .tools.editing_tools import EditingTools
 from .tools.lsp_tools import LSPTools
 from .tools.memory_tools import MemoryTools
 from .tools.planning_tools import PlanningTools
-from .utils.logging import get_logger
+from .utils.logging import get_logger, setup_logging
 
 logger = get_logger(__name__)
 
 
+@asynccontextmanager
+async def server_lifespan(server: FastMCP):
+    """Manage server lifecycle."""
+    await initialize_server()
+    yield
+    await shutdown_server()
+
+
 # Create FastMCP server instance
+# Note: We are not using lifespan here because it seems to interfere with tool registration in some environments.
+# Initialization is handled via ensure_initialized() in tools.
 mcp = FastMCP("Kortex")
 
 
@@ -338,7 +350,7 @@ async def find_references(
 # ===== Project Tool Endpoints =====
 
 @mcp.tool()
-async def onboard_project(project_path: str) -> str:
+async def onboard_project(project_path: str) -> dict[str, Any]:
     """Onboard a new KMP/CMP project.
 
     Analyzes the project, detects configuration, stores it, and initializes
@@ -348,17 +360,17 @@ async def onboard_project(project_path: str) -> str:
         project_path: Path to project root directory
 
     Returns:
-        JSON string with onboarding results including project type, name, and status
+        Dictionary with onboarding results including project type, name, and status
 
     Example:
         >>> result = await onboard_project("/path/to/project")
     """
     logger.info(f"Tool 'onboard_project' called for path: {project_path}")
-    return await project_tools.onboard_project_tool(project_path)
+    return await project_tools.onboard_project(Path(project_path).expanduser().resolve())
 
 
 @mcp.tool()
-async def get_project_info(project_path: str) -> str:
+async def get_project_info(project_path: str) -> dict[str, Any]:
     """Get information about a project.
 
     Retrieves project configuration including targets, source sets, and dependencies.
@@ -367,64 +379,87 @@ async def get_project_info(project_path: str) -> str:
         project_path: Path to project root directory
 
     Returns:
-        JSON string with project information
+        Dictionary with project information
 
     Example:
         >>> info = await get_project_info("/path/to/project")
     """
     logger.info(f"Tool 'get_project_info' called for path: {project_path}")
-    return await project_tools.get_project_info_tool(project_path)
+    return await project_tools.get_project_info(Path(project_path).expanduser().resolve())
 
 
 @mcp.tool()
-async def list_source_sets(project_path: str) -> str:
+async def list_source_sets(project_path: str) -> dict[str, Any]:
     """List project source sets.
 
     Args:
         project_path: Path to project root directory
 
     Returns:
-        JSON string with source set list
+        Dictionary with source set list
 
     Example:
         >>> sets = await list_source_sets("/path/to/project")
     """
     logger.info(f"Tool 'list_source_sets' called for path: {project_path}")
-    return await project_tools.list_source_sets_tool(project_path)
+    info = await project_tools.get_project_info(Path(project_path).expanduser().resolve())
+    source_sets = info["source_sets"]
+    return {
+        "source_sets": source_sets,
+        "count": len(source_sets)
+    }
 
 
 @mcp.tool()
-async def list_targets(project_path: str) -> str:
+async def list_targets(project_path: str) -> dict[str, Any]:
     """List project targets.
 
     Args:
         project_path: Path to project root directory
 
     Returns:
-        JSON string with target list
+        Dictionary with target list
 
     Example:
         >>> targets = await list_targets("/path/to/project")
     """
     logger.info(f"Tool 'list_targets' called for path: {project_path}")
-    return await project_tools.list_targets_tool(project_path)
+    info = await project_tools.get_project_info(Path(project_path).expanduser().resolve())
+    targets = info["targets"]
+    return {
+        "targets": targets,
+        "count": len(targets)
+    }
 
 
 @mcp.tool()
-async def detect_project_type(project_path: str) -> str:
+async def detect_project_type(project_path: str) -> dict[str, Any]:
     """Detect project type.
 
     Args:
         project_path: Path to project root directory
 
     Returns:
-        JSON string with project type
+        Dictionary with project type
 
     Example:
         >>> ptype = await detect_project_type("/path/to/project")
     """
     logger.info(f"Tool 'detect_project_type' called for path: {project_path}")
-    return await project_tools.detect_project_type_tool(project_path)
+    project_dir = Path(project_path).expanduser().resolve()
+    # We need to import detect_project_type from project_tools or use the one from project_analyzer
+    # project_tools.detect_project_type is imported from project_analyzer
+    from .analyzers.project_analyzer import detect_project_type as analyze_project_type
+    from .models.project import ProjectType
+    
+    ptype = analyze_project_type(project_dir)
+
+    return {
+        "path": str(project_dir),
+        "type": ptype.value,
+        "is_kmp": ptype in (ProjectType.KMP, ProjectType.CMP),
+        "is_cmp": ptype == ProjectType.CMP
+    }
 
 
 # ===== Memory Tool Endpoints =====
@@ -527,6 +562,40 @@ async def list_memories(
     return await tools.list_memories(
         category=category
     )
+
+
+@mcp.tool()
+async def get_memory(
+    memory_id: str,
+) -> dict[str, Any]:
+    """Get a specific memory by ID.
+
+    Args:
+        memory_id: The ID of the memory to retrieve
+
+    Returns:
+        Dictionary with memory details
+
+    Example:
+        >>> memory = await get_memory("MEM-001")
+    """
+    logger.info(f"Tool 'get_memory' called for id='{memory_id}'")
+    await ensure_initialized()
+    tools = get_memory_tools()
+    return await tools.get_memory(memory_id)
+
+
+@mcp.tool()
+async def get_memory_stats() -> dict[str, Any]:
+    """Get memory statistics.
+
+    Returns:
+        Dictionary with memory statistics (count by category, etc.)
+    """
+    logger.info(f"Tool 'get_memory_stats' called")
+    await ensure_initialized()
+    tools = get_memory_tools()
+    return await tools.get_memory_stats()
 
 
 # ===== Editing Tool Endpoints =====
@@ -980,5 +1049,15 @@ async def generate_tasks(
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Run the Kortex MCP server."""
+    # Configure logging to stderr
+    setup_logging()
+    
+    # Note: FastMCP handles initialization via ensure_initialized() calls in tools
+    # The server will initialize on first tool invocation
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
