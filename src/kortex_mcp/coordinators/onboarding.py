@@ -6,7 +6,6 @@ onboarding workflow: running analyzers, generating memories, and storing results
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime

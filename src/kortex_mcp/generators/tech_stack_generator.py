@@ -313,8 +313,6 @@ class TechStackMemoryGenerator(BaseMemoryGenerator):
         Returns:
             str: Formatted testing section with table.
         """
-        lines = []
-
         # Primary framework info
         framework = category.get("framework", "")
         framework_display = category.get("framework_display_name", framework)
