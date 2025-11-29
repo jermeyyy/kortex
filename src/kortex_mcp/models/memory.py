@@ -25,7 +25,15 @@ class MemoryCategory(Enum):
         SECURITY: Security requirements and practices
         DOCUMENTATION: Documentation standards and locations
         OTHER: Uncategorized memories
+        PROJECT_STRUCTURE: Project structure and module organization
+        TECH_STACK: Technology stack and frameworks used
+        ANDROID_PLATFORM: Android-specific configuration and patterns
+        IOS_PLATFORM: iOS-specific configuration and patterns
+        CODING_PATTERNS: Code patterns and conventions
+        BUILD_CONFIG: Build configuration and settings
+        TESTING_SETUP: Testing setup and configuration
     """
+    # Existing categories
     ARCHITECTURE = "architecture"
     PATTERNS = "patterns"
     PREFERENCES = "preferences"
@@ -37,6 +45,15 @@ class MemoryCategory(Enum):
     SECURITY = "security"
     DOCUMENTATION = "documentation"
     OTHER = "other"
+
+    # New categories for onboarding
+    PROJECT_STRUCTURE = "project_structure"
+    TECH_STACK = "tech_stack"
+    ANDROID_PLATFORM = "android_platform"
+    IOS_PLATFORM = "ios_platform"
+    CODING_PATTERNS = "coding_patterns"
+    BUILD_CONFIG = "build_config"
+    TESTING_SETUP = "testing_setup"
 
 
 @dataclass
@@ -72,6 +89,8 @@ class Memory:
     last_accessed: datetime = field(default_factory=datetime.now)
     access_count: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
+    source_analyzer: str | None = None  # Which analyzer generated this memory
+    version: int = 1  # Version number for tracking regeneration
 
     def to_dict(self) -> dict[str, Any]:
         """Convert memory to dictionary for serialization.
@@ -93,6 +112,8 @@ class Memory:
             "last_accessed": self.last_accessed.isoformat(),
             "access_count": self.access_count,
             "metadata": self.metadata,
+            "source_analyzer": self.source_analyzer,
+            "version": self.version,
         }
 
     @staticmethod
@@ -118,6 +139,8 @@ class Memory:
             last_accessed=datetime.fromisoformat(data["last_accessed"]),
             access_count=data.get("access_count", 0),
             metadata=data.get("metadata", {}),
+            source_analyzer=data.get("source_analyzer"),  # Default None for backward compatibility
+            version=data.get("version", 1),  # Default 1 for backward compatibility
         )
 
     def update_access(self) -> None:
