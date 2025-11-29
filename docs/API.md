@@ -120,18 +120,28 @@ Validate that expect/actual pairs are consistent.
 
 ## Elicitation Tools
 
+> **Note**: Elicitation tools require the MCP client to support elicitation capability and provide an `elicitation_handler`. If the client doesn't support elicitation (such as older versions of Claude Desktop), the tools will return a helpful message indicating this limitation instead of failing with an error.
+
 ### `ask_open_ended`
 Request information from user in natural language.
 - **Arguments**:
   - `question` (string): Question to ask.
-- **Returns**: User response.
+- **Returns**: 
+  - "User provided: {response}" if the user answered
+  - "User declined to provide information" if declined
+  - "Request cancelled by user" if cancelled
+  - Helpful message if elicitation is not supported by the client
 
 ### `ask_single_select`
 Ask user to select one option from provided choices.
 - **Arguments**:
   - `question` (string): Question to ask.
   - `options` (list[string]): List of options.
-- **Returns**: Selected option.
+- **Returns**: 
+  - "Selected: {option}" if the user made a selection
+  - "User declined to select an option" if declined
+  - "Selection cancelled by user" if cancelled
+  - Helpful message if elicitation is not supported by the client
 
 ## Planning Tools
 

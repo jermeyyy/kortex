@@ -91,8 +91,10 @@ Create and refine specifications before implementation.
 
 ### 7. User Elicitation
 Kortex asks clarifying questions when requirements are ambiguous.
-- **Tools**: `ask_user` (internal)
+- **Tools**: `ask_open_ended`, `ask_single_select`
 - **Usage**: Kortex will automatically ask you questions when needed.
+
+> **Note**: User elicitation requires the MCP client to support the elicitation capability (introduced in MCP spec and FastMCP 2.10.0+). If your client doesn't support elicitation (such as older versions of Claude Desktop), the tools will return a helpful message indicating the limitation instead of failing. In this case, you should provide the information directly in your request.
 
 ## Troubleshooting
 
