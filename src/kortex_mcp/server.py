@@ -14,6 +14,7 @@ from .lsp.manager import LSPManager
 from .storage.memory_store import MemoryStore
 from .storage.project_store import ProjectStore
 from .storage.spec_store import SpecStore
+from .coordinators.onboarding import OnboardingCoordinator
 from .tools import elicitation_tools, project_tools
 from .tools.base import ToolError
 from .tools.editing_tools import EditingTools
@@ -353,20 +354,45 @@ async def find_references(
 async def onboard_project(project_path: str) -> dict[str, Any]:
     """Onboard a new KMP/CMP project.
 
-    Analyzes the project, detects configuration, stores it, and initializes
-    LSP servers as appropriate.
+    Analyzes the project, detects configuration, stores it, generates memories,
+    and initializes LSP servers as appropriate.
 
     Args:
         project_path: Path to project root directory
 
     Returns:
-        Dictionary with onboarding results including project type, name, and status
+        Dictionary with onboarding results including:
+        - success: Whether onboarding succeeded
+        - project_name: Name of the project
+        - memories_generated: List of memory IDs that were generated
+        - errors: List of error messages (if any)
+        - warnings: List of warning messages (if any)
 
     Example:
         >>> result = await onboard_project("/path/to/project")
     """
     logger.info(f"Tool 'onboard_project' called for path: {project_path}")
-    return await project_tools.onboard_project(Path(project_path).expanduser().resolve())
+    try:
+        project_dir = Path(project_path).expanduser().resolve()
+        coordinator = OnboardingCoordinator(project_dir)
+        await coordinator.initialize()
+        result = await coordinator.onboard()
+        return {
+            "success": result.success,
+            "project_name": result.project_name,
+            "memories_generated": result.memories_generated,
+            "errors": result.errors,
+            "warnings": result.warnings,
+        }
+    except Exception as e:
+        logger.error(f"Error onboarding project: {e}")
+        return {
+            "success": False,
+            "project_name": Path(project_path).name,
+            "memories_generated": [],
+            "errors": [str(e)],
+            "warnings": [],
+        }
 
 
 @mcp.tool()
@@ -567,22 +593,72 @@ async def list_memories(
 @mcp.tool()
 async def get_memory(
     memory_id: str,
+    project_path: str | None = None,
 ) -> dict[str, Any]:
-    """Get a specific memory by ID.
+    """Get a specific memory by ID in markdown format.
+
+    Retrieves the memory content and returns it as formatted markdown.
+    If project_path is provided, looks in the project's memory store.
+    Otherwise uses the global memory store.
 
     Args:
         memory_id: The ID of the memory to retrieve
+        project_path: Optional path to project for project-specific memories
 
     Returns:
-        Dictionary with memory details
+        Dictionary with memory details including:
+        - found: Whether the memory was found
+        - memory_id: The memory ID
+        - title: Memory title
+        - category: Memory category
+        - content: Memory content in markdown format
+        - tags: List of tags
+        - created_at: Creation timestamp
+        - updated_at: Last update timestamp
 
     Example:
-        >>> memory = await get_memory("MEM-001")
+        >>> memory = await get_memory("tech_stack", "/path/to/project")
     """
     logger.info(f"Tool 'get_memory' called for id='{memory_id}'")
-    await ensure_initialized()
-    tools = get_memory_tools()
-    return await tools.get_memory(memory_id)
+    
+    try:
+        if project_path:
+            # Use project-specific memory store
+            project_dir = Path(project_path).expanduser().resolve()
+            storage_path = project_dir / ".kortex" / "memories"
+            memory_store = MemoryStore(storage_path)
+            await memory_store.initialize()
+        else:
+            # Use global memory store
+            await ensure_initialized()
+            memory_store = get_memory_store()
+        
+        memory = await memory_store.get(memory_id)
+        
+        if memory is None:
+            return {
+                "found": False,
+                "memory_id": memory_id,
+                "error": f"Memory '{memory_id}' not found"
+            }
+        
+        return {
+            "found": True,
+            "memory_id": memory.id,
+            "title": memory.title,
+            "category": memory.category.value if hasattr(memory.category, 'value') else str(memory.category),
+            "content": memory.content,
+            "tags": memory.tags,
+            "created_at": memory.created_at.isoformat() if memory.created_at else None,
+            "updated_at": memory.updated_at.isoformat() if memory.updated_at else None,
+        }
+    except Exception as e:
+        logger.error(f"Error getting memory: {e}")
+        return {
+            "found": False,
+            "memory_id": memory_id,
+            "error": str(e)
+        }
 
 
 @mcp.tool()
@@ -596,6 +672,125 @@ async def get_memory_stats() -> dict[str, Any]:
     await ensure_initialized()
     tools = get_memory_tools()
     return await tools.get_memory_stats()
+
+
+@mcp.tool()
+async def regenerate_memory(project_path: str, memory_id: str) -> dict[str, Any]:
+    """
+    Regenerate a specific memory category.
+    
+    Re-runs the necessary analyzers and regenerates the specified memory.
+    Useful when project structure has changed or analysis needs updating.
+    
+    Args:
+        project_path: Path to the project root directory
+        memory_id: ID of memory to regenerate (e.g., "tech_stack", "architecture")
+    
+    Valid memory IDs:
+    - project_structure: Project structure and modules
+    - tech_stack: Technology stack and frameworks
+    - architecture: Architecture patterns and layers
+    - dependencies: Project dependencies
+    - android_platform: Android configuration
+    - ios_platform: iOS configuration
+    - coding_patterns: Coding conventions
+    - testing_setup: Testing configuration
+    
+    Returns:
+        Dictionary with:
+        - success: Whether regeneration succeeded
+        - memory_id: ID of the memory that was regenerated
+        - error: Error message if regeneration failed, None otherwise
+    
+    Example:
+        >>> result = await regenerate_memory("/path/to/project", "tech_stack")
+    """
+    logger.info(f"Tool 'regenerate_memory' called for memory_id='{memory_id}'")
+    try:
+        project_dir = Path(project_path).expanduser().resolve()
+        coordinator = OnboardingCoordinator(project_dir)
+        await coordinator.initialize()
+        result = await coordinator.regenerate_memory(memory_id)
+        return {
+            "success": result.success,
+            "memory_id": result.memory_id,
+            "error": result.error
+        }
+    except Exception as e:
+        logger.error(f"Error regenerating memory: {e}")
+        return {
+            "success": False,
+            "memory_id": memory_id,
+            "error": str(e)
+        }
+
+
+@mcp.tool()
+async def list_project_memories(project_path: str) -> dict[str, Any]:
+    """
+    List all available memories for a project.
+    
+    Returns the list of memory IDs that have been generated for the project,
+    along with their metadata such as title, category, and timestamps.
+    
+    Args:
+        project_path: Path to the project root directory
+    
+    Returns:
+        Dictionary with:
+        - success: Whether the operation succeeded
+        - memories: List of memory details with id, title, category, tags, timestamps
+        - count: Total number of memories
+        - available_memory_types: List of memory types that can be generated
+        - error: Error message if operation failed
+    
+    Example:
+        >>> result = await list_project_memories("/path/to/project")
+        >>> for mem in result["memories"]:
+        ...     print(f"{mem['id']}: {mem['title']}")
+    """
+    logger.info(f"Tool 'list_project_memories' called for path: {project_path}")
+    try:
+        project_dir = Path(project_path).expanduser().resolve()
+        
+        # Get available memory types from coordinator
+        coordinator = OnboardingCoordinator(project_dir)
+        available_types = coordinator.get_available_memories()
+        
+        # Get stored memories from project's memory store
+        storage_path = project_dir / ".kortex" / "memories"
+        memory_store = MemoryStore(storage_path)
+        await memory_store.initialize()
+        
+        all_memories = await memory_store.get_all()
+        
+        memories_list = []
+        for memory in all_memories:
+            memories_list.append({
+                "id": memory.id,
+                "title": memory.title,
+                "category": memory.category.value if hasattr(memory.category, 'value') else str(memory.category),
+                "tags": memory.tags,
+                "created_at": memory.created_at.isoformat() if memory.created_at else None,
+                "updated_at": memory.updated_at.isoformat() if memory.updated_at else None,
+            })
+        
+        return {
+            "success": True,
+            "memories": memories_list,
+            "count": len(memories_list),
+            "available_memory_types": available_types,
+            "error": None
+        }
+    except Exception as e:
+        logger.error(f"Error listing project memories: {e}")
+        return {
+            "success": False,
+            "memories": [],
+            "count": 0,
+            "available_memory_types": [],
+            "error": str(e)
+        }
 
 
 # ===== Editing Tool Endpoints =====
