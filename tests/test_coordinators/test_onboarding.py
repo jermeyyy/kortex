@@ -2,7 +2,6 @@
 
 import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from kortex_mcp.coordinators.onboarding import (
     OnboardingCoordinator,

@@ -249,14 +249,6 @@ class TechStackAnalyzer(BaseAnalyzer):
             re.MULTILINE
         )
 
-        # Also match Kotlin DSL style with version catalogs
-        catalog_pattern = re.compile(
-            r'(?:implementation|api|compileOnly|runtimeOnly|testImplementation|androidTestImplementation)\s*\(\s*'
-            r'(libs\.[a-zA-Z0-9_.]+)'
-            r'\s*\)',
-            re.MULTILINE
-        )
-
         # Parse standard dependencies
         for match in dep_pattern.finditer(content):
             artifact_spec = match.group(1)
